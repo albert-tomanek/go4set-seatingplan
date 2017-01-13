@@ -20,6 +20,7 @@ public class Classroom : Gtk.DrawingArea
 		/* Enable events which we wish to get notified about */
 		add_events (  Gdk.EventMask.BUTTON_PRESS_MASK				// For drag 'n' drop
 					| Gdk.EventMask.BUTTON_RELEASE_MASK
+					| Gdk.EventMask.POINTER_MOTION_MASK				// For moving dnd real-time
 					);
 
 	}
@@ -50,15 +51,24 @@ public class Classroom : Gtk.DrawingArea
 		return false;
 	}
 
+	public override bool motion_notify_event (Gdk.EventMotion event)
+	{
+		if (this.dnd_object != null)
+		{
+			/* Move the object to the current location for real-time dragging */
+			this.dnd_object.move((int) event.x - this.object_offset_x, (int) event.y - this.object_offset_y);	// Move the object, with the correct offset of its top left corner
+
+			this.queue_draw();		// Redraw our classroom
+		}
+
+		return false;
+	}
+
 	public override bool button_release_event (Gdk.EventButton event)
 	{
 		if (event.button == 1 && this.dnd_object != null)
 		{
-			/* If they want to drag-and-drop an object */
-
-			this.dnd_object.move((int) event.x - this.object_offset_x, (int) event.y - this.object_offset_y);	// Move the object, with the correct offset of its top left corner
-
-			this.queue_draw();		// Redraw our classroom
+			/* They've just stopped dragging an object */
 
 			this.dnd_object = null;
 			this.object_offset_x = null;
