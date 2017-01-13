@@ -1,8 +1,12 @@
 
 public class Classroom : Gtk.DrawingArea
 {
-
 	public Array <Table> tables = new Array <Table> ();
+
+	private Table? dnd_object    = null;	// The object being dragged
+	private int? object_offset_x = null;	// Offset from the object's top left
+	private int? object_offset_y = null;
+
 
 	public delegate void DrawMethod();			// A delegate is like a function pointer in C
 
@@ -26,13 +30,21 @@ public class Classroom : Gtk.DrawingArea
 	{
 		if (event.button == 1)
 		{
-			/* Left click */
+			/* Left click; start dragging an object */
+
+			this.dnd_object = this.get_table_at((int) event.x, (int) event.y);			// (returns null if no object is found)
+
+			if (this.dnd_object != null)
+			{
+				this.object_offset_x = (int) event.x - this.dnd_object.x;
+				this.object_offset_y = (int) event.y - this.dnd_object.y;
+			}
 		}
 		if (event.button == 3)
 		{
 			/* Right click to add a table */
 
-			this.add_table(60, 60, (int) event.x, (int) event.y);
+			this.add_table(120, 80, (int) event.x, (int) event.y);
 		}
 
 		return false;
@@ -40,7 +52,19 @@ public class Classroom : Gtk.DrawingArea
 
 	public override bool button_release_event (Gdk.EventButton event)
 	{
-		
+		if (event.button == 1 && this.dnd_object != null)
+		{
+			/* If they want to drag-and-drop an object */
+
+			this.dnd_object.move((int) event.x - this.object_offset_x, (int) event.y - this.object_offset_y);	// Move the object, with the correct offset of its top left corner
+
+			this.queue_draw();		// Redraw our classroom
+
+			this.dnd_object = null;
+			this.object_offset_x = null;
+			this.object_offset_y = null;
+		}
+
 		return false;
 	}
 
@@ -75,12 +99,13 @@ public class Classroom : Gtk.DrawingArea
 
 	public Table? get_table_at(int x, int y)
 	{
+
 		for (int i = 0; i < this.tables.length; i++)
 		{
 			Table table = this.tables.index(i);
 
-			if ( table.x < x < table.x + table.width &&
-				 table.y < y < table.y + table.height )
+			if ( table.x < x && x < (table.x + table.width ) &&
+				 table.y < y && y < (table.y + table.height) )
 			{
 				return table;
 			}
