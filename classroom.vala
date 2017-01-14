@@ -33,7 +33,7 @@ public class Classroom : Gtk.DrawingArea
 		{
 			/* Left click; start dragging an object */
 
-			this.dnd_object = this.get_table_at((int) event.x, (int) event.y);			// (returns null if no object is found)
+			this.dnd_object = this.get_object_at((int) event.x, (int) event.y);			// (returns null if no object is found)
 
 			if (this.dnd_object != null)
 			{
@@ -107,8 +107,9 @@ public class Classroom : Gtk.DrawingArea
 		this.queue_draw();	// Redraw our classroom
 	}
 
-	public Table? get_table_at(int x, int y)
+	public Table? get_object_at(int x, int y)
 	{
+		Table return_table = null;
 
 		for (int i = 0; i < this.tables.length; i++)
 		{
@@ -117,10 +118,10 @@ public class Classroom : Gtk.DrawingArea
 			if ( table.x < x && x < (table.x + table.width ) &&
 				 table.y < y && y < (table.y + table.height) )
 			{
-				return table;
+				return_table = table;
 			}
 		}
 
-		return null;
+		return return_table;
 	}
 }
