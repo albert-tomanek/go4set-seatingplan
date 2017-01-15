@@ -43,12 +43,6 @@ public class Classroom : Gtk.DrawingArea
 				this.object_offset_y = (int) event.y - this.dnd_object.y;
 			}
 		}
-		if (event.button == 3)
-		{
-			/* Right click to add a table */
-
-			this.add_table( new Table(120, 80, (int) event.x, (int) event.y) );
-		}
 
 		return false;
 	}
@@ -93,7 +87,7 @@ public class Classroom : Gtk.DrawingArea
 		/* Draw tables */
 		for (int i = 0; i < this.tables.length; i++)
 		{
-			this.tables.index(i) .draw(context);
+			this.tables.index(i).draw(context);
 		}
 
 		context.restore();
