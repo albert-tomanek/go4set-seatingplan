@@ -1,6 +1,5 @@
 /* Compile: valac main.vala classroom.vala --pkg gtk+-3.0 */
 
-
 public class SeatingPlanApp : Gtk.Application
 {
 	protected override void activate ()
@@ -24,7 +23,7 @@ public class SeatingPlanApp : Gtk.Application
 
 		/* Add a 'New Table' button */
 		var newTableButton = new Gtk.Button.with_label("New Table");
-		newTableButton.clicked.connect(() => { classroom.add_table(120, 80, 0, 0); } );
+		newTableButton.clicked.connect( () => {print("new table button clicked\n"); classroom.new_table_popup( newTableButton ); } );
 		controlsGrid.attach(newTableButton, 0, 0, 1, 1);
 
 		root.show_all();

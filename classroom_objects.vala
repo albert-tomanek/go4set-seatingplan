@@ -1,3 +1,4 @@
+
 public class Table : GLib.Object
 {
 	public int width;

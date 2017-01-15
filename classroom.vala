@@ -45,7 +45,7 @@ public class Classroom : Gtk.DrawingArea
 		{
 			/* Right click to add a table */
 
-			this.add_table(120, 80, (int) event.x, (int) event.y);
+			this.add_table( new Table(120, 80, (int) event.x, (int) event.y) );
 		}
 
 		return false;
@@ -101,10 +101,31 @@ public class Classroom : Gtk.DrawingArea
 
 	/* Our methods */
 
-	public void add_table(int width, int height, int x, int y)
+	public void add_table(Table table)
 	{
-		this.tables.append_val( new Table(width, height, x, y) );
+		print("add_table called\n");
+		this.tables.append_val( table );
 		this.queue_draw();	// Redraw our classroom
+	}
+
+	public void new_table_popup(Gtk.Widget parent)
+	{
+		var pop = new Gtk.Popover (parent);
+		pop.set_border_width(12);
+
+		var grid = new Gtk.Grid();
+
+		var okButton = new Gtk.Button.with_label("Ok");
+		okButton.clicked.connect(() => {
+										var table = new Table(120, 80, 0, 0);
+										pop.destroy();
+
+										this.add_table(table);
+										});
+
+		grid.attach(okButton, 0, 0, 1, 1);
+		pop.add(grid);
+		pop.show_all();
 	}
 
 	public Table? get_object_at(int x, int y)
