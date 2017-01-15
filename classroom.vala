@@ -1,3 +1,5 @@
+const int DEF_TABLE_WIDTH  = 120;
+const int DEF_TABLE_HEIGHT =  80;
 
 public class Classroom : Gtk.DrawingArea
 {
@@ -103,7 +105,6 @@ public class Classroom : Gtk.DrawingArea
 
 	public void add_table(Table table)
 	{
-		print("add_table called\n");
 		this.tables.append_val( table );
 		this.queue_draw();	// Redraw our classroom
 	}
@@ -114,16 +115,30 @@ public class Classroom : Gtk.DrawingArea
 		pop.set_border_width(12);
 
 		var grid = new Gtk.Grid();
+		grid.set_column_spacing(6);
+		grid.set_row_spacing   (6);
+
+		var widthLabel = new Gtk.Label("Length (cm):");
+		grid.attach(widthLabel, 0, 0, 1, 1);
+		var widthBox   = new Gtk.SpinButton.with_range(30, 500, 05);		// From 30cm to 5m, in steps of 5cm
+		widthBox.set_value((double) DEF_TABLE_WIDTH);
+		grid.attach(widthBox  , 1, 0, 1, 1);
+
+		var heightLabel = new Gtk.Label("Width (cm):");
+		grid.attach(heightLabel, 0, 1, 1, 1);
+		var heightBox   = new Gtk.SpinButton.with_range(30, 500, 05);
+		heightBox.set_value((double) DEF_TABLE_HEIGHT);
+		grid.attach(heightBox  , 1, 1, 1, 1);
 
 		var okButton = new Gtk.Button.with_label("Ok");
 		okButton.clicked.connect(() => {
-										var table = new Table(120, 80, 0, 0);
+										var table = new Table((int) widthBox.get_value(), (int) heightBox.get_value(), 0, 0);
 										pop.destroy();
 
 										this.add_table(table);
 										});
 
-		grid.attach(okButton, 0, 0, 1, 1);
+		grid.attach(okButton, 0, 2, 2, 1);
 		pop.add(grid);
 		pop.show_all();
 	}

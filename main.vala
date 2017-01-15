@@ -23,7 +23,7 @@ public class SeatingPlanApp : Gtk.Application
 
 		/* Add a 'New Table' button */
 		var newTableButton = new Gtk.Button.with_label("New Table");
-		newTableButton.clicked.connect( () => {print("new table button clicked\n"); classroom.new_table_popup( newTableButton ); } );
+		newTableButton.clicked.connect( () => { classroom.new_table_popup( newTableButton ); } );
 		controlsGrid.attach(newTableButton, 0, 0, 1, 1);
 
 		root.show_all();
