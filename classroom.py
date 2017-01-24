@@ -1,4 +1,5 @@
 from tkinter import *
+from tkinter.ttk import *
 import objects
 
 class Classroom:
@@ -35,13 +36,46 @@ class Classroom:
 		self.canvas.bind("<ButtonRelease-1>", dnd_bup)
 		self.canvas.grid(column=0, row=0,padx=10, pady=10)
 
+		# Functions to do with buttons in the frame
+
+		def addTableFunct():
+			# What to do when the 'Add Table' button is pressed
+
+			dialog = Toplevel()
+			dialog.title("Table properties")
+
+			widthLabel = Label(dialog, text="Width:")
+			widthEntry = Entry(dialog)
+			widthEntry.insert(0, "200")
+			widthLabel.grid(column=0, row=0, padx=10, pady=10)
+			widthEntry.grid(column=1, row=0, padx=10, pady=10)
+
+			heightLabel = Label(dialog, text="Length:")
+			heightEntry = Entry(dialog)
+			heightEntry.insert(0, "120")
+			heightLabel.grid(column=0, row=1, padx=10, pady=10)
+			heightEntry.grid(column=1, row=1, padx=10, pady=10)
+
+			def ok():
+				table = objects.Table(int(widthEntry.get()), int(heightEntry.get()))
+				self.contents[table.draw(self.canvas, 0, 0)] = table
+				dialog.destroy()
+
+			def cancel():
+				dialog.destroy()
+
+			buttonFrame  = Frame(dialog)
+			buttonFrame.grid(column=0, row=2, columnspan=2, padx=10, pady=10)
+			okButton     = Button(buttonFrame, text="Ok", command=ok)
+			cancelButton = Button(buttonFrame, text="Cancel", command=cancel)
+			okButton.grid(column=1, row=0, padx=10)
+			cancelButton.grid(column=0, row=0, padx=10)
+
+
 		## The frame with buttons ##
 		self.ctrlframe = Frame(self.root)
 		self.ctrlframe.grid(column=1, row=0)
 
-		def addTableFunct():
-			table = objects.Table(120, 80)
-			self.contents[table.draw(self.canvas, 0, 0)] = table
 
 		self.addButton = Button(self.ctrlframe, text='Add Table', command=addTableFunct)
 		self.addButton.grid(column=0, row=0, padx=10, pady=10)
