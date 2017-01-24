@@ -1,5 +1,6 @@
 from tkinter import *
 from tkinter.ttk import *
+from widgets import *
 import objects
 
 class Classroom:
@@ -44,15 +45,13 @@ class Classroom:
 			dialog = Toplevel()
 			dialog.title("Table properties")
 
-			widthLabel = Label(dialog, text="Width:")
-			widthEntry = Entry(dialog)
-			widthEntry.insert(0, "200")
+			widthLabel = Label(dialog, text="Width (cm):")
+			widthEntry = NumEntry(dialog, default=200, step=5, min_val=50, max_val=500)
 			widthLabel.grid(column=0, row=0, padx=10, pady=10)
 			widthEntry.grid(column=1, row=0, padx=10, pady=10)
 
-			heightLabel = Label(dialog, text="Length:")
-			heightEntry = Entry(dialog)
-			heightEntry.insert(0, "120")
+			heightLabel = Label(dialog, text="Length (cm):")
+			heightEntry = NumEntry(dialog, default=120, step=5, min_val=50, max_val=500)
 			heightLabel.grid(column=0, row=1, padx=10, pady=10)
 			heightEntry.grid(column=1, row=1, padx=10, pady=10)
 
