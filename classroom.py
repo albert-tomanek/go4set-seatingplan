@@ -15,9 +15,9 @@ def canvas_get(canvas, x, y):
 	if things != ():
 		return things[-1]
 
-class Classroom:
-	def __init__(self):
-		super(Classroom, self).__init__()	# Initialise the superclass
+class Classroom(Frame):
+	def __init__(self, root):
+		super(Classroom, self).__init__(root)	# Initialise the superclass
 
 		# Create instance variables
 		self.contents = {}				# The dictionary with the tkinter representations of the table
@@ -27,37 +27,10 @@ class Classroom:
 		self.__dnd_start_x = None
 		self.__dnd_start_y = None
 
-		##
-
-		self.root = Tk()
-		self.root.title("Seating Plan")
-
-		# Create the menus
-
-		def open_classroom():
-			loc = filedialog.askopenfilename(title="Load classroom layout", filetypes=[('JSON files','*.json'), ('All files','*.*')])
-			if loc:
-				self.load(classroom=loc)
-		def save_classroom():
-			loc = filedialog.asksaveasfilename(title="Save classroom layout", filetypes=[('JSON files','*.json'), ('All files','*.*')])
-			if loc:
-				self.save(classroom=loc)
-
-
-		self.menubar  = Menu(self.root)
-		self.root.config(menu=self.menubar)
-
-		self.filemenu = Menu(self.menubar, tearoff=0)
-		self.menubar.add_cascade (label="File", menu=self.filemenu)
-		self.filemenu.add_command(label="Open", command=open_classroom)
-		self.filemenu.add_command(label="Save As", command=save_classroom)
-		self.filemenu.add_separator()
-		self.filemenu.add_command(label="Quit", command=self.root.destroy)
-
 		# Create the canvas
 
 		def rclick_menu(event):
-			menu = Menu(self.root, tearoff=0)
+			menu = Menu(self, tearoff=0)
 
 			def delete_table(x, y):
 				table = canvas_get(self.canvas, event.x, event.y)
@@ -67,7 +40,8 @@ class Classroom:
 			menu.add_command(label="Add chair", command=lambda: self.add_chair(x=event.x, y=event.y))
 			menu.add_command(label="Delete",    command=lambda: delete_table(event.x, event.y))
 
-			menu.post(event.x_root, event.y_root)		# _root => x and y of it in the whole roow window
+			menu.tk_popup(event.x_root, event.y_root)		# _root => x and y of it in the whole roow window
+			menu.grab_release()		# Else it wouldn't close until you clicked one of its buttons.
 
 		def dnd_bdown(event):
 			# Temporarily store the positions
@@ -86,30 +60,19 @@ class Classroom:
 				self.__dnd_start_x = None
 				self.__dnd_start_y = None
 
-		self.canvas = Canvas(self.root, width=800, height=600, bg="#ffffff", borderwidth=1, relief=SUNKEN)
-		self.canvas.grid(column=0, row=0,padx=10, pady=10)
+		self.canvas = Canvas(self, width=800, height=600, bg="#ffffff", borderwidth=1, relief=SUNKEN)
+		self.canvas.grid(column=0, row=0)
 
 		self.canvas.bind("<Button-1>", dnd_bdown)
 		self.canvas.bind("<ButtonRelease-1>", dnd_bup)
 		self.canvas.bind("<Button-3>", rclick_menu)
-
-		## The frame with buttons ##
-		self.ctrlframe = Frame(self.root)
-		self.ctrlframe.grid(column=1, row=0, sticky=N)
-
-		self.addTableButton = Button(self.ctrlframe, text="New Table", command=self.add_table)
-		self.addTableButton.grid(column=0, row=0, padx=10, pady=10)
-		self.addChairButton = Button(self.ctrlframe, text="New Chair", command=self.add_chair)
-		self.addChairButton.grid(column=1, row=0, padx=10, pady=10)
-
-		self.root.mainloop()
 
 	## Other methods ##
 
 	def add_table(self, x=0, y=0):
 		# What to do when the 'Add Table' button is pressed
 
-		dialog = Toplevel(master=self.root)
+		dialog = Toplevel(master=self.canvas)
 		dialog.title("Table properties")
 
 		widthLabel = Label(dialog, text="Width (cm):")
@@ -175,7 +138,47 @@ class Classroom:
 			with open(classroom, 'w') as f:
 				json.dump( [content.__repr__() for content in self.contents.values()], f)
 
+class SeatingPlan():
+	def __init__(self):
+		self.root = Tk()
+		self.root.title("Seating Plan")
+
+		# Create the menus
+
+		def open_classroom():
+			loc = filedialog.askopenfilename(title="Load classroom layout", filetypes=[('JSON files','*.json'), ('All files','*.*')])
+			if loc:
+				self.classroom.load(classroom=loc)
+		def save_classroom():
+			loc = filedialog.asksaveasfilename(title="Save classroom layout", filetypes=[('JSON files','*.json'), ('All files','*.*')])
+			if loc:
+				self.classroom.save(classroom=loc)
+
+		self.menubar  = Menu(self.root)
+		self.root.config(menu=self.menubar)
+
+		self.filemenu = Menu(self.menubar, tearoff=0)
+		self.menubar.add_cascade (label="File", menu=self.filemenu)
+		self.filemenu.add_command(label="Open", command=open_classroom)
+		self.filemenu.add_command(label="Save As", command=save_classroom)
+		self.filemenu.add_separator()
+		self.filemenu.add_command(label="Quit", command=self.root.destroy)
+
+		self.classroom = Classroom(self.root)
+		self.classroom.grid(column=0, row=0, padx=10, pady=10)
+
+		## The frame with buttons ##
+		self.ctrlframe = Frame(self.root)
+		self.ctrlframe.grid(column=1, row=0, sticky=N)
+
+		self.addTableButton = Button(self.ctrlframe, text="New Table", command=self.classroom.add_table)
+		self.addTableButton.grid(column=0, row=0, padx=10, pady=10)
+		self.addChairButton = Button(self.ctrlframe, text="New Chair", command=self.classroom.add_chair)
+		self.addChairButton.grid(column=1, row=0, padx=10, pady=10)
+
+		self.root.mainloop()
+
 if __name__ == '__main__':
-	x = Classroom()
+	SeatingPlan()
 
 	#import pdb; pdb.set_trace()
