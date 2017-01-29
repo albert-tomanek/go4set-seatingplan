@@ -42,3 +42,20 @@ class NumEntry(Frame):
 
 	def get(self):
 		return int(self.entry.get())
+
+class EntryWithButton(Frame):
+	def __init__(self, parent, command=None, buttontext="Ok"):
+		super(EntryWithButton, self).__init__(parent)		# Initialise the superclass
+
+		self.entry = Entry(self)
+		self.entry.grid(column=1, row=0, padx=4, pady=0)
+
+		self.button = Button(self, text=buttontext, command=lambda: command())
+		self.button.grid(column=0, row=0, padx=4, pady=0)
+
+	def insert(self, text):
+		self.entry.delete(0, END)
+		self.entry.insert(0, str(text))
+
+	def get(self):
+		return self.entry.get()

@@ -1,12 +1,14 @@
 #!/usr/bin/python3
 
 import json
+import os
+import sys
 
 from tkinter import *
 from tkinter import filedialog
-from tkinter.ttk import *
+from tkinter import ttk
 
-from widgets import *
+import widgets
 import furnature
 
 def canvas_get(canvas, x, y):
@@ -16,7 +18,7 @@ def canvas_get(canvas, x, y):
 		return things[-1]
 
 class Classroom(Frame):
-	def __init__(self, root):
+	def __init__(self, root, closefunct=None):
 		super(Classroom, self).__init__(root)	# Initialise the superclass
 
 		# Create instance variables
@@ -61,11 +63,21 @@ class Classroom(Frame):
 				self.__dnd_start_y = None
 
 		self.canvas = Canvas(self, width=800, height=600, bg="#ffffff", borderwidth=1, relief=SUNKEN)
-		self.canvas.grid(column=0, row=0)
+		self.canvas.grid(column=0, row=0, padx=5, pady=5)
 
 		self.canvas.bind("<Button-1>", dnd_bdown)
 		self.canvas.bind("<ButtonRelease-1>", dnd_bup)
 		self.canvas.bind("<Button-3>", rclick_menu)
+
+		# The frame of controls below the classroom
+		self.ctrlframe = Frame(self)
+		self.ctrlframe.grid(column=0, row=1, padx=5, pady=5, sticky=W)
+
+		self.closeButton = Button(self.ctrlframe, text="Close", command=self.destroy)
+		self.closeButton.grid(column=0, row=0, padx=10)
+
+		self.nameBox = Entry(self.ctrlframe)
+		self.nameBox.grid(column=1, row=0, padx=10)
 
 	## Other methods ##
 
@@ -76,12 +88,12 @@ class Classroom(Frame):
 		dialog.title("Table properties")
 
 		widthLabel = Label(dialog, text="Width (cm):")
-		widthEntry = NumEntry(dialog, default=200, step=5, min_val=50, max_val=500)
+		widthEntry = widgets.NumEntry(dialog, default=200, step=5, min_val=50, max_val=500)
 		widthLabel.grid(column=0, row=0, padx=10, pady=10)
 		widthEntry.grid(column=1, row=0, padx=10, pady=10)
 
 		heightLabel = Label(dialog, text="Length (cm):")
-		heightEntry = NumEntry(dialog, default=120, step=5, min_val=50, max_val=500)
+		heightEntry = widgets.NumEntry(dialog, default=120, step=5, min_val=50, max_val=500)
 		heightLabel.grid(column=0, row=1, padx=10, pady=10)
 		heightEntry.grid(column=1, row=1, padx=10, pady=10)
 
@@ -106,17 +118,25 @@ class Classroom(Frame):
 		chair = furnature.Chair(x=x, y=y)
 		self.contents[chair.draw(self.canvas)] = chair
 
+	def rename(self, name):
+		self.nameBox.delete(0, END)
+		self.nameBox.insert(0, name)
+
 	def reset(self):
 		self.canvas.delete(ALL)
+		self.nameBox.delete(0, END)
 		self.contents = {}
 
-	def load(self, classroom=None):
+	def load(self, loc=None):
 		self.reset()
 
 		# Load the classroom data from a file
-		if classroom:
-			with open(classroom, "r") as f:
-				for thing in json.load(f):
+		if loc:
+			with open(loc, "r") as f:
+				data = json.load(f)
+				self.nameBox.insert(0, data["name"])
+
+				for thing in data["contents"]:
 					if thing["__type"] == "Table":
 						table = furnature.Table()
 						table.width = thing["width"]
@@ -132,14 +152,19 @@ class Classroom(Frame):
 
 						self.contents[chair.draw(self.canvas)] = chair
 
-	def save(self, classroom=None):
+	def save(self, loc=None):
 		# Save the classroom to JSON file
-		if classroom:
-			with open(classroom, 'w') as f:
-				json.dump( [content.__repr__() for content in self.contents.values()], f)
+		if loc:
+			with open(loc, 'w') as f:
+				out = 	{																			\
+							"name" : (self.nameBox.get() if self.nameBox.get() != "" else loc.split(os.sep)[-1]),		\
+							"contents" : [content.__repr__() for content in self.contents.values()]	\
+						}
+
+				json.dump(out, f)
 
 class SeatingPlan():
-	def __init__(self):
+	def __init__(self, files=[]):
 		self.root = Tk()
 		self.root.title("Seating Plan")
 
@@ -148,37 +173,67 @@ class SeatingPlan():
 		def open_classroom():
 			loc = filedialog.askopenfilename(title="Load classroom layout", filetypes=[('JSON files','*.json'), ('All files','*.*')])
 			if loc:
-				self.classroom.load(classroom=loc)
+				self.load_classroom(loc)
 		def save_classroom():
 			loc = filedialog.asksaveasfilename(title="Save classroom layout", filetypes=[('JSON files','*.json'), ('All files','*.*')])
 			if loc:
-				self.classroom.save(classroom=loc)
+				self.current_classroom().save(loc=loc)
 
 		self.menubar  = Menu(self.root)
 		self.root.config(menu=self.menubar)
 
 		self.filemenu = Menu(self.menubar, tearoff=0)
 		self.menubar.add_cascade (label="File", menu=self.filemenu)
+		self.filemenu.add_command(label="New", command=self.new_classroom)
 		self.filemenu.add_command(label="Open", command=open_classroom)
 		self.filemenu.add_command(label="Save As", command=save_classroom)
 		self.filemenu.add_separator()
 		self.filemenu.add_command(label="Quit", command=self.root.destroy)
 
-		self.classroom = Classroom(self.root)
-		self.classroom.grid(column=0, row=0, padx=10, pady=10)
+		## The notebook with classrooms ##
+
+		self.tabs = ttk.Notebook(self.root)
+		self.tabs.enable_traversal()						# Enable ctrl-tab and ctrl-shift-tab
+		self.tabs.grid(column=0, row=0, padx=10, pady=10)
+
+		self.classrooms = []
+
+		if files == []:
+			self.new_classroom()
 
 		## The frame with buttons ##
-		self.ctrlframe = Frame(self.root)
-		self.ctrlframe.grid(column=1, row=0, sticky=N)
+		self.ctrlframe = Frame(self.root, relief=RAISED, borderwidth=1)
+		self.ctrlframe.grid(column=1, row=0, padx=10, pady=10, sticky=N+S)
 
-		self.addTableButton = Button(self.ctrlframe, text="New Table", command=self.classroom.add_table)
-		self.addTableButton.grid(column=0, row=0, padx=10, pady=10)
-		self.addChairButton = Button(self.ctrlframe, text="New Chair", command=self.classroom.add_chair)
-		self.addChairButton.grid(column=1, row=0, padx=10, pady=10)
+		def updateName():
+			self.current_classroom().name = self.nameBox.get()
+
+		self.addTableButton = Button(self.ctrlframe, text="New Table", command=lambda: self.current_classroom().add_table())
+		self.addTableButton.grid(column=0, row=1, padx=10, pady=10)
+		self.addChairButton = Button(self.ctrlframe, text="New Chair", command=lambda: self.current_classroom().add_chair())
+		self.addChairButton.grid(column=1, row=1, padx=10, pady=10)
+
+		# Load files if any were given
+		for loc in files:
+			self.load_classroom(loc)
 
 		self.root.mainloop()
 
+	def new_classroom(self):
+		classroom = Classroom(self.root)
+		self.classrooms.append(classroom)
+		self.tabs.add(classroom, text="New classroom")
+
+	def load_classroom(self, loc):
+		classroom = Classroom(self.root)
+		classroom.load(loc)
+		self.classrooms.append(classroom)
+		self.tabs.add(classroom, text=classroom.nameBox.get())
+
+	def current_classroom(self):
+		return self.classrooms[self.tabs.index("current")]
+
 if __name__ == '__main__':
-	SeatingPlan()
+	SeatingPlan(files=sys.argv[1:])
 
 	#import pdb; pdb.set_trace()
