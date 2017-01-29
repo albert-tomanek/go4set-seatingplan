@@ -7,10 +7,13 @@ from tkinter import filedialog
 from tkinter.ttk import *
 
 from widgets import *
-import objects
+import furnature
 
 def canvas_get(canvas, x, y):
-	return canvas.find_overlapping(x, y, x+1, y+1)[0] if canvas.find_all() != () else None		# .find_overlapping() returns a tuple
+	things = canvas.find_overlapping(x, y, x+1, y+1)	# Returns a tuple of the IDs of all the objects at the given pixel
+
+	if things != ():
+		return things[-1]
 
 class Classroom:
 	def __init__(self):
@@ -56,12 +59,13 @@ class Classroom:
 		def rclick_menu(event):
 			menu = Menu(self.root, tearoff=0)
 
-			def delete_table(event):
+			def delete_table(x, y):
 				table = canvas_get(self.canvas, event.x, event.y)
 				self.canvas.delete(table)
 
-			menu.add_command(label="Add table", command=self.add_table)
-			menu.add_command(label="Delete", command=lambda: delete_table(event))
+			menu.add_command(label="Add table", command=lambda: self.add_table(x=event.x, y=event.y))
+			menu.add_command(label="Add chair", command=lambda: self.add_chair(x=event.x, y=event.y))
+			menu.add_command(label="Delete",    command=lambda: delete_table(event.x, event.y))
 
 			menu.post(event.x_root, event.y_root)		# _root => x and y of it in the whole roow window
 
@@ -91,16 +95,18 @@ class Classroom:
 
 		## The frame with buttons ##
 		self.ctrlframe = Frame(self.root)
-		self.ctrlframe.grid(column=1, row=0)
+		self.ctrlframe.grid(column=1, row=0, sticky=N)
 
-		self.addTableButton = Button(self.ctrlframe, text='Add Table', command=self.add_table)
+		self.addTableButton = Button(self.ctrlframe, text="New Table", command=self.add_table)
 		self.addTableButton.grid(column=0, row=0, padx=10, pady=10)
+		self.addChairButton = Button(self.ctrlframe, text="New Chair", command=self.add_chair)
+		self.addChairButton.grid(column=1, row=0, padx=10, pady=10)
 
 		self.root.mainloop()
 
 	## Other methods ##
 
-	def add_table(self):
+	def add_table(self, x=0, y=0):
 		# What to do when the 'Add Table' button is pressed
 
 		dialog = Toplevel(master=self.root)
@@ -117,7 +123,7 @@ class Classroom:
 		heightEntry.grid(column=1, row=1, padx=10, pady=10)
 
 		def ok(*args):
-			table = objects.Table(int(widthEntry.get()), int(heightEntry.get()), 0, 0)
+			table = furnature.Table(int(widthEntry.get()), int(heightEntry.get()), x=x, y=y)
 			self.contents[table.draw(self.canvas)] = table
 			dialog.destroy()
 
@@ -133,28 +139,43 @@ class Classroom:
 
 		dialog.bind("<Return>", ok)
 
-	def load(self, classroom=None):
+	def add_chair(self, x=0, y=0):
+		chair = furnature.Chair(x=x, y=y)
+		self.contents[chair.draw(self.canvas)] = chair
+
+	def reset(self):
+		self.canvas.delete(ALL)
 		self.contents = {}
+
+	def load(self, classroom=None):
+		self.reset()
 
 		# Load the classroom data from a file
 		if classroom:
 			with open(classroom, "r") as f:
 				for thing in json.load(f):
 					if thing["__type"] == "Table":
-						table = objects.Table()
+						table = furnature.Table()
 						table.width = thing["width"]
 						table.height = thing["height"]
 						table.x = thing["x"]
 						table.y = thing["y"]
 
 						self.contents[table.draw(self.canvas)] = table
+					if thing["__type"] == "Chair":
+						chair = furnature.Chair()
+						chair.x = thing["x"]
+						chair.y = thing["y"]
+
+						self.contents[chair.draw(self.canvas)] = chair
 
 	def save(self, classroom=None):
 		# Save the classroom to JSON file
 		if classroom:
-			#import pdb; pdb.set_trace()
 			with open(classroom, 'w') as f:
 				json.dump( [content.__repr__() for content in self.contents.values()], f)
 
 if __name__ == '__main__':
 	x = Classroom()
+
+	#import pdb; pdb.set_trace()
