@@ -9,8 +9,7 @@ class NumEntry(Frame):
 
 		self.entry = Entry(self)
 		self.entry.insert(0, str(default) if default else "")
-		self.entry.grid(column=0, row=0, padx=5)
-
+		self.entry.grid(column=0, row=0)
 		self.incrementButton = Button(self, text="+", command=self.increment)
 		self.incrementButton.grid(column=1, row=0, padx=5)
 
@@ -59,3 +58,21 @@ class EntryWithButton(Frame):
 
 	def get(self):
 		return self.entry.get()
+
+def TextLoadWindow(root, text='', title=' '):
+    hlpWindow = Toplevel(root)
+    hlpWindow.resizable(0,0)
+    hlpWindow.title(title)
+
+    scrollbar = Scrollbar(hlpWindow)
+    scrollbar.grid(column=0, row=0)
+
+    hlpText = Text(hlpWindow, width=65, height=20, yscrollcommand=scrollbar.set)
+    hlpText.grid(column=0, row=0, padx=10, pady=10)
+    hlpText.insert(END, text)
+    hlpText.config(state=DISABLED)
+
+    scrollbar.config(command=hlpText.yview)
+
+    quitButton = Button(hlpWindow, text='Ok', command=hlpWindow.destroy)
+    quitButton.grid(column=0, row=1, padx=10, pady=10)

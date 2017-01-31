@@ -4,27 +4,40 @@ class Furnature:
 	x = 0
 	y = 0
 
+	tag = None
+
 class Table(Furnature):
-	def __init__(self, width=120, height=80, x=0, y=0):
+	def __init__(self, tag, name="", width=120, height=80, x=0, y=0):
+		self.tag = tag
 		self.width  = width
 		self.height = height
 		self.x = x
 		self.y = y
 
-	def draw(self, canvas):
-		# Draw ourselves on the canvas, and keep our ID
-		return canvas.create_rectangle(self.x, self.y, self.x + self.width, self.y + self.height, fill="#376eb4")
+		self.name = name
+		self.name_text_id = None
 
-	def __repr__(self):
+	def draw(self, canvas):
+		# Draw ourselves on the canvas
+		my_id = canvas.create_rectangle(self.x, self.y, self.x + self.width, self.y + self.height, fill="#376eb4")
+		canvas.itemconfig(my_id, tags=(self.tag))
+
+		self.name_text_id = canvas.create_text((self.x + self.width / 2), (self.y + self.height/2))
+		canvas.itemconfig(self.name_text_id, text=self.name)
+
+	def json(self):
 		return { 									\
 					"__type" : "Table",				\
+					"__tag"  : self.tag,			\
 					"x" : self.x,					\
 					"y" : self.y,					\
 					"width"  : self.width,			\
-					"height" : self.height			\
+					"height" : self.height,			\
+					"name" : self.name				\
 				}
 class Chair(Furnature):
-	def __init__(self, x=0, y=0):
+	def __init__(self, tag, x=0, y=0):
+		self.tag = tag
 		self.width  = 47	# Measurments are in centimetres
 		self.height = 47	# https://goo.gl/c0tCEt
 		self.x = x
@@ -34,11 +47,13 @@ class Chair(Furnature):
 
 	def draw(self, canvas):
 		# Draw ourselves on the canvas, and keep our ID
-		return canvas.create_oval(self.x, self.y, (self.x + self.width), (self.y + self.height), fill="#dd0000")
+		my_id = canvas.create_oval(self.x, self.y, (self.x + self.width), (self.y + self.height), fill="#dd0000")
+		canvas.itemconfig(my_id, tags=(self.tag))
 
-	def __repr__(self):
+	def json(self):
 		return {									\
 					"__type" : "Chair",				\
+					"__tag"  : self.tag,			\
 					"x" : self.x,					\
 					"y" : self.y					\
 				}
