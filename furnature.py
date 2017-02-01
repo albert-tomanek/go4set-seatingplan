@@ -22,6 +22,12 @@ class Table(Furnature):
 		my_id = canvas.create_rectangle(self.x, self.y, self.x + self.width, self.y + self.height, fill="#376eb4")
 		canvas.itemconfig(my_id, tags=(self.tag))
 
+		self.draw_name(canvas)
+
+	def draw_name(self, canvas):
+		if self.name_text_id:
+			canvas.delete(self.name_text_id)
+
 		self.name_text_id = canvas.create_text((self.x + self.width / 2), (self.y + self.height/2))
 		canvas.itemconfig(self.name_text_id, text=self.name)
 

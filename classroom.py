@@ -42,7 +42,6 @@ class Classroom(Frame):
 		self.dnd_tag = None	# The ID of the object we're dragging and dropping
 		self.dnd_start_x = None
 		self.dnd_start_y = None
-		self.tag_index = 1
 
 		# Create the canvas
 
@@ -50,16 +49,51 @@ class Classroom(Frame):
 			thing = canvas_get(self.canvas, event.x, event.y)
 			menu  = Menu(self, tearoff=0)
 
-			def delete_table(x, y):
-				table = canvas_get(self.canvas, event.x, event.y)
-				self.canvas.delete(table)
+			def delete_thing(x, y):
+				thing_tag = canvas_get(self.canvas, event.x, event.y)
+				self.remove(thing_tag)
+
+			def rename_table(x, y):
+				table = self.contents[canvas_get(self.canvas, event.x, event.y)]
+
+				dialog = Toplevel(master=self.canvas)
+				dialog.title("Rename Table")
+
+				nameLabel = Label(dialog, text="Name:")
+				nameEntry = Entry(dialog)
+				nameLabel.grid(column=0, row=0, padx=10, pady=10, sticky=W)
+				nameEntry.grid(column=1, row=0, padx=10, pady=10, sticky=W)
+
+				nameEntry.insert(0, table.name)
+
+				def ok(*args):
+					table.name = nameEntry.get()
+					table.draw_name(self.canvas)
+
+					dialog.destroy()
+
+				def cancel(*args):
+					dialog.destroy()
+
+				buttonFrame  = Frame(dialog)
+				buttonFrame.grid(column=0, row=1, columnspan=2, padx=10, pady=10)
+				okButton     = Button(buttonFrame, text="Ok", command=ok)
+				cancelButton = Button(buttonFrame, text="Cancel", command=cancel)
+				okButton.grid(column=1, row=0, padx=10)
+				cancelButton.grid(column=0, row=0, padx=10)
+
+				dialog.bind("<Return>", ok)
 
 			menu.add_command(label="Add table", command=lambda: self.add_table(x=event.x, y=event.y))
 			menu.add_command(label="Add chair", command=lambda: self.add_chair(x=event.x, y=event.y))
 
 			if thing:
+				if type(self.contents[thing]) == furnature.Table:
+					menu.add_separator()
+					menu.add_command(label="Rename", command=lambda: rename_table(event.x, event.y))
+				
 				menu.add_separator()
-				menu.add_command(label="Delete",    command=lambda: delete_table(event.x, event.y))
+				menu.add_command(label="Delete", command=lambda: delete_thing(event.x, event.y))
 
 			menu.tk_popup(event.x_root, event.y_root)		# _root => x and y of it in the whole roow window
 			menu.grab_release()		# Else it wouldn't close until you clicked one of its buttons.
@@ -73,8 +107,11 @@ class Classroom(Frame):
 		def dnd_bup(event):
 			if self.dnd_tag:
 				mv_object = self.contents[self.dnd_tag]
+
 				self.canvas.move(self.dnd_tag, event.x-self.dnd_start_x, event.y-self.dnd_start_y)		# .move doesn't want to know to WHERE it moves, it wants to know how much it should move BY.
-				self.canvas.move(mv_object.name_text_id, event.x-self.dnd_start_x, event.y-self.dnd_start_y)	# Move the text too
+				if type(mv_object) == furnature.Table:
+					self.canvas.move(mv_object.name_text_id, event.x-self.dnd_start_x, event.y-self.dnd_start_y)	# Move the text too
+
 				mv_object.x = self.canvas.coords(self.dnd_tag)[0]		# Canvas.coords() returns: [tl_x, tl_y, br_x, br_y]
 				mv_object.y = self.canvas.coords(self.dnd_tag)[1]
 
@@ -96,8 +133,10 @@ class Classroom(Frame):
 		self.closeButton = Button(self.ctrlframe, text="Close", command=self.close)
 		self.closeButton.grid(column=0, row=0, padx=10)
 
+		self.nameLabel = Label(self.ctrlframe, text="Classroom Name:")
+		self.nameLabel.grid(column=1, row=0, padx=10, sticky=E)
 		self.nameBox = Entry(self.ctrlframe)
-		self.nameBox.grid(column=1, row=0, padx=10)
+		self.nameBox.grid(column=2, row=0, padx=10)
 
 	## Other methods ##
 
@@ -123,8 +162,7 @@ class Classroom(Frame):
 		nameEntry.grid(column=1, row=2, padx=10, pady=10, sticky=W)
 
 		def ok(*args):
-			table = furnature.Table(self.new_tag(), width=int(widthEntry.get()), height=int(heightEntry.get()), x=x, y=y)
-			self.tag_index += 1		# This tag name has been used now, so we need to get a new one
+			table = furnature.Table(self.new_tag(), name=nameEntry.get(), width=int(widthEntry.get()), height=int(heightEntry.get()), x=x, y=y)
 			table.draw(self.canvas)
 			self.contents[table.tag] = table
 			dialog.destroy()
@@ -143,9 +181,18 @@ class Classroom(Frame):
 
 	def add_chair(self, x=0, y=0):
 		chair = furnature.Chair(self.new_tag(), x=x, y=y)
-		self.tag_index += 1		# This tag name has been used now, so we need to get a new one
 		chair.draw(self.canvas)
 		self.contents[chair.tag] = chair
+
+	def remove(self, tag):
+		rm_thing = self.contents[tag]
+
+		if type(rm_thing) == furnature.Table:
+			# Remove the title if it's a table
+			self.canvas.delete(rm_thing.name_text_id)
+
+		self.canvas.delete(tag)
+		self.contents.pop(tag)		# Not the best way, but oh well...
 
 	def new_tag(self):
 		i = 1
@@ -167,7 +214,6 @@ class Classroom(Frame):
 		self.canvas.delete(ALL)
 		self.nameBox.delete(0, END)
 		self.contents = {}
-		self.tag_index = 1
 
 	def load(self, loc=None):
 		self.reset()
@@ -199,8 +245,6 @@ class Classroom(Frame):
 
 						self.contents[thing["__tag"]] = chair
 
-					self.tag_index += 1
-
 	def save(self, loc=None):
 		# Save the classroom to JSON file
 		if loc:
@@ -211,6 +255,10 @@ class Classroom(Frame):
 						}
 
 				json.dump(out, f)
+
+				if self.nameBox.get() == "":
+					self.nameBox.delete(0, END)
+					self.nameBox.insert(0, loc.split(os.sep)[-1])
 
 	def close(self):
 		if self.closefunct:
