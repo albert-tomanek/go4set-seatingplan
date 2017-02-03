@@ -8,6 +8,7 @@ from tkinter import *
 from tkinter import filedialog
 from tkinter import ttk
 
+from pupil import Pupil
 import widgets
 import furnature
 
@@ -25,10 +26,15 @@ And our mentor:
 """
 
 def canvas_get(canvas, x, y):
+	#import pdb; pdb.set_trace()
+
 	things = canvas.find_overlapping(x, y, x+1, y+1)	# Returns a tuple of the IDs of all the objects at the given pixel
 
 	if things != ():
-		return canvas.gettags(things[-1])[0]	# There'll only ever be one thing per tag anyway
+		if canvas.type(things[-1]) == "text":
+			return canvas.gettags(things[-2])[0]
+		else:
+			return canvas.gettags(things[-1])[0]	# There'll only ever be one thing per tag anyway
 
 class Classroom(Frame):
 	def __init__(self, root, closefunct=None):
@@ -91,7 +97,7 @@ class Classroom(Frame):
 				if type(self.contents[thing]) == furnature.Table:
 					menu.add_separator()
 					menu.add_command(label="Rename", command=lambda: rename_table(event.x, event.y))
-				
+
 				menu.add_separator()
 				menu.add_command(label="Delete", command=lambda: delete_thing(event.x, event.y))
 
@@ -140,6 +146,9 @@ class Classroom(Frame):
 
 	## Other methods ##
 
+	def chairs(self):
+		return [thing for thing in self.contents if type(thing) == objects.Chair]
+
 	def add_table(self, x=0, y=0):
 		# What to do when the 'Add Table' button is pressed
 
@@ -184,6 +193,37 @@ class Classroom(Frame):
 		chair.draw(self.canvas)
 		self.contents[chair.tag] = chair
 
+	def add_pupil(self, after=None):
+		# What to do when the 'Add Table' button is pressed
+
+		dialog = Toplevel(master=self.canvas)
+		dialog.title("Add Pupil")
+
+		nameLabel = Label(dialog, text="Name:")
+		nameEntry = Entry(dialog)
+		nameLabel.grid(column=0, row=0, padx=10, pady=10, sticky=W)
+		nameEntry.grid(column=1, row=0, padx=10, pady=10, sticky=W)
+
+		def ok(*args):
+			pupil = Pupil(name=nameEntry.get())
+			self.pupils[self.new_pupil_tag()] = pupil
+			dialog.destroy()
+
+			if after:
+				after()
+
+		def cancel(*args):
+			dialog.destroy()
+
+		buttonFrame  = Frame(dialog)
+		buttonFrame.grid(column=0, row=1, columnspan=2, padx=10, pady=10)
+		okButton     = Button(buttonFrame, text="Ok", command=ok)
+		cancelButton = Button(buttonFrame, text="Cancel", command=cancel)
+		okButton.grid(column=1, row=0, padx=10)
+		cancelButton.grid(column=0, row=0, padx=10)
+
+		dialog.bind("<Return>", ok)
+
 	def remove(self, tag):
 		rm_thing = self.contents[tag]
 
@@ -202,6 +242,18 @@ class Classroom(Frame):
 			tag = "OBJECT_" + str(i)
 
 			if tag not in self.contents.keys():
+				return tag
+			else:
+				i += 1
+
+	def new_pupil_tag(self):
+		i = 1
+		tag = ""
+
+		while True:
+			tag = "PUPIL_" + str(i)
+
+			if tag not in self.pupils.keys():
 				return tag
 			else:
 				i += 1
@@ -319,11 +371,46 @@ class SeatingPlan():
 		self.addChairButton = Button(self.ctrlframe, text="New Chair", command=lambda: self.current_classroom().add_chair())
 		self.addChairButton.grid(column=1, row=1, padx=10, pady=10)
 
+		self.pupilsFrame = LabelFrame(self.ctrlframe, text="Pupils")
+		self.pupilsFrame.grid(column=0, row=2, padx=5, pady=5, columnspan=2, sticky=S)
+
+		self.addPupilButton = Button(self.pupilsFrame, text="Add pupil", command=lambda: self.current_classroom().add_pupil(after=self.update_pupils))
+		self.addPupilButton.grid(column=0, row=0, padx=5, pady=5, sticky=W)
+
+		def togglePresent():
+			for selected in self.pupilsTree.selection():
+				pupil = self.current_classroom().pupils[selected]
+				pupil.present = not pupil.present
+			self.update_pupils()
+
+		self.togglePresentButton = Button(self.pupilsFrame, text="Toggle Presence", command=togglePresent)
+		self.togglePresentButton.grid(column=1, row=0, padx=5, pady=5, sticky=W)
+
+		self.pupilsTree = ttk.Treeview(self.pupilsFrame)
+		self.pupilsTree.grid(column=0, row=1, padx=5, pady=5, columnspan=2)
+
+		self.pupilsTree["columns"] = ("here")
+		self.pupilsTree.column("here", width=50)	# This is just used for the API
+		self.pupilsTree.heading("here", text="Here")
+
+		# When the tab is changed...
+		self.tabs.bind("<<NotebookTabChanged>>", lambda event: self.update_pupils())
+
 		# Load files if any were given
 		for loc in files:
 			self.load_classroom(loc)
 
 		self.root.mainloop()
+
+	def update_pupils(self):
+		# Clear the tree
+		for i in self.pupilsTree.get_children():
+			self.pupilsTree.delete(i)
+
+		classroom = self.current_classroom()
+
+		for tag, pupil in classroom.pupils.items():
+			self.pupilsTree.insert("", 0, iid=tag, text=pupil.name, values=("Yes" if pupil.present else "No"))
 
 	def new_classroom(self):
 		classroom = Classroom(self.root, closefunct=lambda: self.classrooms.remove(classroom))
