@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import json
+import csv
 import os
 import sys
 
@@ -322,6 +323,14 @@ class Classroom(Frame):
 					self.nameBox.delete(0, END)
 					self.nameBox.insert(0, loc.split(os.sep)[-1])
 
+	def export_presence(self, loc):
+		with open(loc, "w") as f:
+			writer = csv.writer(f)
+			writer.writerow( ("Name", "Present") )
+
+			for pupil in self.pupils.values():
+				writer.writerow( (pupil.name, str(int(pupil.present))) )
+
 	def close(self):
 		if self.closefunct:
 			self.closefunct()
@@ -342,6 +351,10 @@ class SeatingPlan():
 			loc = filedialog.asksaveasfilename(title="Save classroom layout", filetypes=[('JSON files','*.json'), ('All files','*.*')])
 			if loc:
 				self.current_classroom().save(loc=loc)
+		def export_presence():
+			loc = filedialog.asksaveasfilename(title="Export pupil presence", filetypes=[('CSV files','*.csv'), ('All files','*.*')])
+			if loc:
+				self.current_classroom().export_presence(loc=loc)
 
 		self.menubar  = Menu(self.root)
 		self.root.config(menu=self.menubar)
@@ -351,6 +364,7 @@ class SeatingPlan():
 		self.filemenu.add_command(label="New", command=self.new_classroom)
 		self.filemenu.add_command(label="Open", command=open_classroom)
 		self.filemenu.add_command(label="Save As", command=save_classroom)
+		self.filemenu.add_command(label="Export Presence", command=export_presence)
 		self.filemenu.add_separator()
 		self.filemenu.add_command(label="Quit", command=self.root.destroy)
 
