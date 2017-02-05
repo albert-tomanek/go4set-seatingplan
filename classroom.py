@@ -81,7 +81,7 @@ class Classroom(Frame):
 					dialog.destroy()
 
 				def cancel(*args):
-					dialog.destroy()
+					diaPlog.destroy()
 
 				buttonFrame  = Frame(dialog)
 				buttonFrame.grid(column=0, row=1, columnspan=2, padx=10, pady=10)
@@ -96,12 +96,13 @@ class Classroom(Frame):
 			menu.add_command(label="Add chair", command=lambda: self.add_chair(x=event.x, y=event.y))
 
 			if thing:
-				if type(self.contents[thing]) == furnature.Table:
+				if type(self.things()[thing]) == furnature.Table:
 					menu.add_separator()
 					menu.add_command(label="Rename", command=lambda: rename_table(event.x, event.y))
 
-				menu.add_separator()
-				menu.add_command(label="Delete", command=lambda: delete_thing(event.x, event.y))
+				if type(self.things()[thing]) != Pupil:
+					menu.add_separator()
+					menu.add_command(label="Delete", command=lambda: delete_thing(event.x, event.y))
 
 			menu.tk_popup(event.x_root, event.y_root)		# _root => x and y of it in the whole roow window
 			menu.grab_release()		# Else it wouldn't close until you clicked one of its buttons.
@@ -111,7 +112,7 @@ class Classroom(Frame):
 			self.dnd_tag = canvas_get(self.canvas, event.x, event.y)
 
 			if self.dnd_tag:
-				self.dnd_object = self.contents[self.dnd_tag]
+				self.dnd_object = self.things()[self.dnd_tag]		# It may be either a piece of furnature, or a pupil representation
 				self.dnd_start_x = event.x
 				self.dnd_start_y = event.y
 
@@ -119,7 +120,7 @@ class Classroom(Frame):
 			if self.dnd_tag:
 
 				self.canvas.move(self.dnd_tag, event.x-self.dnd_start_x, event.y-self.dnd_start_y)		# .move doesn't want to know to WHERE it moves, it wants to know how much it should move BY.
-				if type(self.dnd_object) == furnature.Table:
+				if type(self.dnd_object) == furnature.Table or type(self.dnd_object) == Pupil:
 					self.canvas.move(self.dnd_object.name_text_id, event.x-self.dnd_start_x, event.y-self.dnd_start_y)	# Move the text too
 
 				self.dnd_object.x = self.canvas.coords(self.dnd_tag)[0]		# Canvas.coords() returns: [tl_x, tl_y, br_x, br_y]
@@ -158,6 +159,8 @@ class Classroom(Frame):
 
 	## Other methods ##
 
+	def things(self):
+		return {**self.contents, **self.pupils}
 	def chairs(self):
 		return [thing for thing in self.contents if type(thing) == objects.Chair]
 
@@ -217,9 +220,11 @@ class Classroom(Frame):
 		nameEntry.grid(column=1, row=0, padx=10, pady=10, sticky=W)
 
 		def ok(*args):
-			pupil = Pupil(name=nameEntry.get())
-			self.pupils[self.new_pupil_tag()] = pupil
+			pupil = Pupil(self.new_pupil_tag(), name=nameEntry.get())
+			self.pupils[pupil.tag] = pupil
 			dialog.destroy()
+
+			pupil.draw(self.canvas)
 
 			if after:
 				after()
@@ -278,6 +283,7 @@ class Classroom(Frame):
 		self.canvas.delete(ALL)
 		self.nameBox.delete(0, END)
 		self.contents = {}
+		self.pupils   = {}
 
 	def load(self, loc=None):
 		self.reset()
@@ -312,9 +318,11 @@ class Classroom(Frame):
 
 				# Load the pupils
 				for pupil_node in data["pupils"]:
-					pupil = Pupil()
+					pupil = Pupil(pupil_node["__tag"])
 					pupil.name = pupil_node["name"]
 					pupil.present = pupil_node["present"]
+
+					pupil.draw(self.canvas)
 
 					self.pupils[self.new_pupil_tag()] = pupil
 
@@ -428,6 +436,54 @@ class SeatingPlan():
 		self.pupilsTree.column("here", width=50)	# This is just used for the API
 		self.pupilsTree.heading("here", text="Here")
 
+		# When an element is right-clicked
+		def ptree_rclick_menu(event):
+			pupil_tag = self.pupilsTree.identify_row(event.y)	# This actually returns the item's tag, and not its index
+
+			if pupil_tag:
+				pupil = self.current_classroom().pupils[pupil_tag]
+				menu  = Menu(self.ctrlframe, tearoff=0)
+
+				def renamePupil(pupil):
+					dialog = Toplevel(master=self.current_classroom().canvas)
+					dialog.title("Rename Pupil")
+
+					nameLabel = Label(dialog, text="Name:")
+					nameEntry = Entry(dialog)
+					nameLabel.grid(column=0, row=0, padx=10, pady=10, sticky=W)
+					nameEntry.grid(column=1, row=0, padx=10, pady=10, sticky=W)
+
+					nameEntry.insert(0, pupil.name)
+
+					def ok(*args):
+						pupil.name = nameEntry.get()
+						self.update_pupils()
+
+						dialog.destroy()
+
+					def cancel(*args):
+						dialog.destroy()
+
+					buttonFrame  = Frame(dialog)
+					buttonFrame.grid(column=0, row=1, columnspan=2, padx=10, pady=10)
+					okButton     = Button(buttonFrame, text="Ok", command=ok)
+					cancelButton = Button(buttonFrame, text="Cancel", command=cancel)
+					okButton.grid(column=1, row=0, padx=10)
+					cancelButton.grid(column=0, row=0, padx=10)
+
+					dialog.bind("<Return>", ok)
+				def removePupil(pupil):
+					self.current_classroom().pupils.pop(pupil_tag)
+					self.update_pupils()
+
+				menu.add_command(label="Rename", command=lambda: renamePupil(pupil))
+				menu.add_command(label="Remove", command=lambda: removePupil(pupil))
+
+				menu.tk_popup(event.x_root, event.y_root)		# _root => x and y of it in the whole roow window
+				menu.grab_release()		# Else it wouldn't close until you clicked one of its buttons.
+
+		self.pupilsTree.bind("<Button-3>", ptree_rclick_menu)
+
 		# When the tab is changed...
 		self.tabs.bind("<<NotebookTabChanged>>", lambda event: self.update_pupils())
 
@@ -439,13 +495,16 @@ class SeatingPlan():
 
 	def update_pupils(self, oldselecttags=[]):
 		# Clear the tree
-		for i in self.pupilsTree.get_children():
-			self.pupilsTree.delete(i)
+		for pupil_tag in self.pupilsTree.get_children():
+			self.pupilsTree.delete(pupil_tag)
+			self.current_classroom().canvas.delete(pupil_tag)
+			self.current_classroom().canvas.delete(pupil_tag + "_TEXT")
 
 		classroom = self.current_classroom()
 
 		for tag, pupil in classroom.pupils.items():
 			self.pupilsTree.insert("", 0, iid=tag, text=pupil.name, values=("Yes" if pupil.present else "No"))
+			pupil.draw(self.current_classroom().canvas)
 
 			# Select the pupil if they were previously selected
 			if tag in oldselecttags:

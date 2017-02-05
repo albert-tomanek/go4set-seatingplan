@@ -42,14 +42,14 @@ class Table(Furnature):
 					"name" : self.name				\
 				}
 class Chair(Furnature):
-	def __init__(self, tag, x=0, y=0):
+	def __init__(self, tag, x=0, y=0, pupil=None):
 		self.tag = tag
 		self.width  = 47	# Measurments are in centimetres
 		self.height = 47	# https://goo.gl/c0tCEt
 		self.x = x
 		self.y = y
 
-		self.pupil  = None
+		self.pupil  = pupil
 
 	def draw(self, canvas):
 		# Draw ourselves on the canvas, and keep our ID
@@ -57,9 +57,10 @@ class Chair(Furnature):
 		canvas.itemconfig(my_id, tags=(self.tag))
 
 	def json(self):
-		return {									\
-					"__type" : "Chair",				\
-					"__tag"  : self.tag,			\
-					"x" : self.x,					\
-					"y" : self.y					\
+		return {
+					"__type" : "Chair",
+					"__tag"  : self.tag,
+					"pupil"  : self.pupil.tag,
+					"x" : self.x,
+					"y" : self.y
 				}
