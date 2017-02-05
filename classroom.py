@@ -47,6 +47,7 @@ class Classroom(Frame):
 		self.pupils     = {}
 
 		self.dnd_tag = None	# The ID of the object we're dragging and dropping
+		self.dnd_object  = None
 		self.dnd_start_x = None
 		self.dnd_start_y = None
 
@@ -108,21 +109,30 @@ class Classroom(Frame):
 		def dnd_bdown(event):
 			# Temporarily store the positions
 			self.dnd_tag = canvas_get(self.canvas, event.x, event.y)
-			self.dnd_start_x = event.x
-			self.dnd_start_y = event.y
+
+			if self.dnd_tag:
+				self.dnd_object = self.contents[self.dnd_tag]
+				self.dnd_start_x = event.x
+				self.dnd_start_y = event.y
+
+		def dnd_move(event):
+			if self.dnd_tag:
+
+				self.canvas.move(self.dnd_tag, event.x-self.dnd_start_x, event.y-self.dnd_start_y)		# .move doesn't want to know to WHERE it moves, it wants to know how much it should move BY.
+				if type(self.dnd_object) == furnature.Table:
+					self.canvas.move(self.dnd_object.name_text_id, event.x-self.dnd_start_x, event.y-self.dnd_start_y)	# Move the text too
+
+				self.dnd_object.x = self.canvas.coords(self.dnd_tag)[0]		# Canvas.coords() returns: [tl_x, tl_y, br_x, br_y]
+				self.dnd_object.y = self.canvas.coords(self.dnd_tag)[1]
+
+				# Update the start X and Y
+				self.dnd_start_x = event.x
+				self.dnd_start_y = event.y
 
 		def dnd_bup(event):
 			if self.dnd_tag:
-				mv_object = self.contents[self.dnd_tag]
-
-				self.canvas.move(self.dnd_tag, event.x-self.dnd_start_x, event.y-self.dnd_start_y)		# .move doesn't want to know to WHERE it moves, it wants to know how much it should move BY.
-				if type(mv_object) == furnature.Table:
-					self.canvas.move(mv_object.name_text_id, event.x-self.dnd_start_x, event.y-self.dnd_start_y)	# Move the text too
-
-				mv_object.x = self.canvas.coords(self.dnd_tag)[0]		# Canvas.coords() returns: [tl_x, tl_y, br_x, br_y]
-				mv_object.y = self.canvas.coords(self.dnd_tag)[1]
-
 				self.dnd_tag = None
+				self.dnd_object  = None
 				self.dnd_start_x = None
 				self.dnd_start_y = None
 
@@ -130,6 +140,7 @@ class Classroom(Frame):
 		self.canvas.grid(column=0, row=0, padx=5, pady=5)
 
 		self.canvas.bind("<Button-1>", dnd_bdown)
+		self.canvas.bind("<B1-Motion>", dnd_move)
 		self.canvas.bind("<ButtonRelease-1>", dnd_bup)
 		self.canvas.bind("<Button-3>", rclick_menu)
 
