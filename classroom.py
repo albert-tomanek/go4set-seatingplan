@@ -276,34 +276,44 @@ class Classroom(Frame):
 				data = json.load(f)
 				self.nameBox.insert(0, data["name"])
 
-				for thing in data["contents"]:
-					if thing["__type"] == "Table":
-						table = furnature.Table(thing["__tag"])
-						table.name  = thing["name"]
-						table.width = thing["width"]
-						table.height = thing["height"]
-						table.x = thing["x"]
-						table.y = thing["y"]
+				# Load the classroom's contents
+				for furnature_node in data["contents"]:
+					if furnature_node["__type"] == "Table":
+						table = furnature.Table(furnature_node["__tag"])
+						table.name  = furnature_node["name"]
+						table.width = furnature_node["width"]
+						table.height = furnature_node["height"]
+						table.x = furnature_node["x"]
+						table.y = furnature_node["y"]
 
 						table.draw(self.canvas)
 
-						self.contents[thing["__tag"]] = table
-					if thing["__type"] == "Chair":
-						chair = furnature.Chair(thing["__tag"])
-						chair.x = thing["x"]
-						chair.y = thing["y"]
+						self.contents[furnature_node["__tag"]] = table
+					if furnature_node["__type"] == "Chair":
+						chair = furnature.Chair(furnature_node["__tag"])
+						chair.x = furnature_node["x"]
+						chair.y = furnature_node["y"]
 
 						chair.draw(self.canvas)
 
-						self.contents[thing["__tag"]] = chair
+						self.contents[furnature_node["__tag"]] = chair
+
+				# Load the pupils
+				for pupil_node in data["pupils"]:
+					pupil = Pupil()
+					pupil.name = pupil_node["name"]
+					pupil.present = pupil_node["present"]
+
+					self.pupils[self.new_pupil_tag()] = pupil
 
 	def save(self, loc=None):
 		# Save the classroom to JSON file
 		if loc:
 			with open(loc, 'w') as f:
-				out = 	{																			\
-							"name" : (self.nameBox.get() if self.nameBox.get() != "" else loc.split(os.sep)[-1]),		\
-							"contents" : [content.json() for content in self.contents.values()]	\
+				out = 	{
+							"name"     : (self.nameBox.get() if self.nameBox.get() != "" else loc.split(os.sep)[-1]),
+							"contents" : [content.json() for content in self.contents.values()],
+							"pupils"   : [pupil.json() for pupil in self.pupils.values()]
 						}
 
 				json.dump(out, f)
@@ -381,7 +391,7 @@ class SeatingPlan():
 			for selected in self.pupilsTree.selection():
 				pupil = self.current_classroom().pupils[selected]
 				pupil.present = not pupil.present
-			self.update_pupils()
+			self.update_pupils (oldselecttags = self.pupilsTree.selection())
 
 		self.togglePresentButton = Button(self.pupilsFrame, text="Toggle Presence", command=togglePresent)
 		self.togglePresentButton.grid(column=1, row=0, padx=5, pady=5, sticky=W)
@@ -402,7 +412,7 @@ class SeatingPlan():
 
 		self.root.mainloop()
 
-	def update_pupils(self):
+	def update_pupils(self, oldselecttags=[]):
 		# Clear the tree
 		for i in self.pupilsTree.get_children():
 			self.pupilsTree.delete(i)
@@ -411,6 +421,10 @@ class SeatingPlan():
 
 		for tag, pupil in classroom.pupils.items():
 			self.pupilsTree.insert("", 0, iid=tag, text=pupil.name, values=("Yes" if pupil.present else "No"))
+
+			# Select the pupil if they were previously selected
+			if tag in oldselecttags:
+				self.pupilsTree.selection_add(tag)
 
 	def new_classroom(self):
 		classroom = Classroom(self.root, closefunct=lambda: self.classrooms.remove(classroom))
