@@ -117,12 +117,41 @@ class Classroom(Frame):
 				self.dnd_start_y = event.y
 
 		def dnd_move(event):
+			# If we're *actually dragging sth*
 			if self.dnd_tag:
 
-				self.canvas.move(self.dnd_tag, event.x-self.dnd_start_x, event.y-self.dnd_start_y)		# .move doesn't want to know to WHERE it moves, it wants to know how much it should move BY.
-				if type(self.dnd_object) == furnature.Table or type(self.dnd_object) == Pupil:
-					self.canvas.move(self.dnd_object.name_text_id, event.x-self.dnd_start_x, event.y-self.dnd_start_y)	# Move the text too
+				# Sets 'chair' if there is a chair beneath the cursor
+				if self.objects_at(event.x, event.y) != None:
+					underlying_chairs = [thing for thing in self.objects_at(event.x, event.y) if type(thing) == furnature.Chair]
 
+					if underlying_chairs:
+						chair = underlying_chairs[0]
+					else:
+						chair = None
+				else:
+					chair = None
+
+				if type(self.dnd_object) == Pupil and chair != None:
+						# If we're dragging a pupil and there's a chair under it...
+
+						pupil = self.dnd_object
+
+						# Move the pupil to the middle of the chair
+						self.canvas.move(self.dnd_tag, event.x-self.dnd_start_x, event.y-self.dnd_start_y)		# .move doesn't want to know to WHERE it moves, it wants to know how much it should move BY.
+
+						chair.pupil = pupil
+
+				else:
+					# If the object we're dragging isn't a pupil and there isn't a chair under us...
+
+					# Move the object
+					self.canvas.move(self.dnd_tag, event.x-self.dnd_start_x, event.y-self.dnd_start_y)		# .move doesn't want to know to WHERE it moves, it wants to know how much it should move BY.
+
+					# Move the text if it is a table or pupil
+					if type(self.dnd_object) == furnature.Table or type(self.dnd_object) == Pupil:
+						self.canvas.move(self.dnd_object.name_text_id, event.x-self.dnd_start_x, event.y-self.dnd_start_y)	# Move the text too
+
+				# update the object's x and y
 				self.dnd_object.x = self.canvas.coords(self.dnd_tag)[0]		# Canvas.coords() returns: [tl_x, tl_y, br_x, br_y]
 				self.dnd_object.y = self.canvas.coords(self.dnd_tag)[1]
 
@@ -163,6 +192,22 @@ class Classroom(Frame):
 		return {**self.contents, **self.pupils}
 	def chairs(self):
 		return [thing for thing in self.contents if type(thing) == objects.Chair]
+
+	def objects_at(self, x, y):
+		# Returns a list of objects at the given pixel
+		import pdb; pdb.set_trace()
+		# This is a list of tags/IDs. Each thing in the classroom will only ever have ONE tag
+		things = []
+		for num_id in self.canvas.find_overlapping(x, y, x+1, y+1):
+			if self.canvas.gettags(num_id):
+				things += self.canvas.gettags(num_id)[0]
+
+		ret    = []
+
+		for thing in things:
+			if self.canvas.type(thing[0]) != "text" and thing in self.contents.keys():
+				ret += thing
+		return ret
 
 	def add_table(self, x=0, y=0):
 		# What to do when the 'Add Table' button is pressed

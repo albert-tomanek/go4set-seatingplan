@@ -56,11 +56,14 @@ class Chair(Furnature):
 		my_id = canvas.create_oval(self.x, self.y, (self.x + self.width), (self.y + self.height), fill="#dd0000")
 		canvas.itemconfig(my_id, tags=(self.tag))
 
+	def get_centre(self):
+		return (self.x + (self.width/2), self.y + (self.height/2))
+
 	def json(self):
 		return {
 					"__type" : "Chair",
 					"__tag"  : self.tag,
-					"pupil"  : self.pupil.tag,
+					"pupil"  : self.pupil.tag if self.pupil else None,
 					"x" : self.x,
 					"y" : self.y
 				}
