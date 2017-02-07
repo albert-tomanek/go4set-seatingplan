@@ -119,10 +119,11 @@ class Classroom(Frame):
 		def dnd_move(event):
 			# If we're *actually dragging sth*
 			if self.dnd_tag:
-
 				# Sets 'chair' if there is a chair beneath the cursor
 				if self.objects_at(event.x, event.y) != None:
-					underlying_chairs = [thing for thing in self.objects_at(event.x, event.y) if type(thing) == furnature.Chair]
+
+					# Get us a list of all the chairs we are above
+					underlying_chairs = [self.contents[thing] for thing in self.objects_at(event.x, event.y) if type(self.contents[thing]) == furnature.Chair]
 
 					if underlying_chairs:
 						chair = underlying_chairs[0]
@@ -136,11 +137,17 @@ class Classroom(Frame):
 
 						pupil = self.dnd_object
 
+						move_x = (chair.x + chair.width / 2)  - (pupil.x + pupil.width / 2)
+						move_y = (chair.y + chair.height / 2) - (pupil.y + pupil.height / 2)
+
 						# Move the pupil to the middle of the chair
-						self.canvas.move(self.dnd_tag, event.x-self.dnd_start_x, event.y-self.dnd_start_y)		# .move doesn't want to know to WHERE it moves, it wants to know how much it should move BY.
+						self.canvas.move(self.dnd_tag, move_x, move_y)		# .move doesn't want to know to WHERE it moves, it wants to know how much it should move BY.
+						self.canvas.move(self.dnd_object.name_text_id, move_x, move_y)	# Move the text too
 
 						chair.pupil = pupil
-
+				elif False:
+					# Here we put the code that removes a pupil from a chair
+					pass
 				else:
 					# If the object we're dragging isn't a pupil and there isn't a chair under us...
 
@@ -195,18 +202,18 @@ class Classroom(Frame):
 
 	def objects_at(self, x, y):
 		# Returns a list of objects at the given pixel
-		import pdb; pdb.set_trace()
+
 		# This is a list of tags/IDs. Each thing in the classroom will only ever have ONE tag
 		things = []
 		for num_id in self.canvas.find_overlapping(x, y, x+1, y+1):
 			if self.canvas.gettags(num_id):
-				things += self.canvas.gettags(num_id)[0]
+				things.append(self.canvas.gettags(num_id)[0])
 
 		ret    = []
 
 		for thing in things:
 			if self.canvas.type(thing[0]) != "text" and thing in self.contents.keys():
-				ret += thing
+				ret.append(thing)
 		return ret
 
 	def add_table(self, x=0, y=0):
@@ -339,6 +346,17 @@ class Classroom(Frame):
 				data = json.load(f)
 				self.nameBox.insert(0, data["name"])
 
+				# Load the pupils
+				for pupil_node in data["pupils"]:
+					pupil = Pupil(pupil_node["__tag"])
+					pupil.name = pupil_node["name"]
+					pupil.present = pupil_node["present"]
+
+					pupil.draw(self.canvas)
+
+					self.pupils[pupil.tag] = pupil
+
+
 				# Load the classroom's contents
 				for furnature_node in data["contents"]:
 					if furnature_node["__type"] == "Table":
@@ -360,16 +378,6 @@ class Classroom(Frame):
 						chair.draw(self.canvas)
 
 						self.contents[furnature_node["__tag"]] = chair
-
-				# Load the pupils
-				for pupil_node in data["pupils"]:
-					pupil = Pupil(pupil_node["__tag"])
-					pupil.name = pupil_node["name"]
-					pupil.present = pupil_node["present"]
-
-					pupil.draw(self.canvas)
-
-					self.pupils[self.new_pupil_tag()] = pupil
 
 	def save(self, loc=None):
 		# Save the classroom to JSON file
