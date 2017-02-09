@@ -119,35 +119,25 @@ class Classroom(Frame):
 		def dnd_move(event):
 			# If we're *actually dragging sth*
 			if self.dnd_tag:
-				# Sets 'chair' if there is a chair beneath the cursor
-				if self.objects_at(event.x, event.y) != None:
-
-					# Get us a list of all the chairs we are above
-					underlying_chairs = [self.contents[thing] for thing in self.objects_at(event.x, event.y) if type(self.contents[thing]) == furnature.Chair]
-
-					if underlying_chairs:
-						chair = underlying_chairs[0]
-					else:
-						chair = None
-				else:
-					chair = None
+				chair = self.chair_at(event.x, event.y)
 
 				if type(self.dnd_object) == Pupil and chair != None:
-						# If we're dragging a pupil and there's a chair under it...
+					# If we're dragging a pupil and there's a chair under it...
 
-						pupil = self.dnd_object
+					pupil = self.dnd_object
 
-						move_x = (chair.x + chair.width / 2)  - (pupil.x + pupil.width / 2)
-						move_y = (chair.y + chair.height / 2) - (pupil.y + pupil.height / 2)
+					move_x = (chair.x + chair.width / 2)  - (pupil.x + pupil.width / 2)
+					move_y = (chair.y + chair.height / 2) - (pupil.y + pupil.height / 2)
 
-						# Move the pupil to the middle of the chair
-						self.canvas.move(self.dnd_tag, move_x, move_y)		# .move doesn't want to know to WHERE it moves, it wants to know how much it should move BY.
-						self.canvas.move(self.dnd_object.name_text_id, move_x, move_y)	# Move the text too
+					# Move the pupil to the middle of the chair
+					self.canvas.move(self.dnd_tag, move_x, move_y)		# .move doesn't want to know to WHERE it moves, it wants to know how much it should move BY.
+					self.canvas.move(self.dnd_object.name_text_id, move_x, move_y)	# Move the text too
 
-						chair.pupil = pupil
-				elif False:
+					chair.pupil_tag = pupil.tag
+				elif chair == None and self.chair_at(self.dnd_start_x, self.dnd_start_y) != None:
 					# Here we put the code that removes a pupil from a chair
-					pass
+
+					self.chair_at(self.dnd_start_x, self.dnd_start_y).pupil_tag = None
 				else:
 					# If the object we're dragging isn't a pupil and there isn't a chair under us...
 
@@ -215,6 +205,20 @@ class Classroom(Frame):
 			if self.canvas.type(thing[0]) != "text" and thing in self.contents.keys():
 				ret.append(thing)
 		return ret
+
+	def chair_at(self, x, y):
+		# Returns a chair if there is one beneath the cursor
+		if self.objects_at(x, y) != None:
+
+			# Get us a list of all the chairs we are above
+			underlying_chairs = [self.contents[thing] for thing in self.objects_at(x, y) if type(self.contents[thing]) == furnature.Chair]
+
+			if underlying_chairs:
+				return underlying_chairs[0]
+			else:
+				return None
+		else:
+			return None
 
 	def add_table(self, x=0, y=0):
 		# What to do when the 'Add Table' button is pressed
@@ -346,17 +350,6 @@ class Classroom(Frame):
 				data = json.load(f)
 				self.nameBox.insert(0, data["name"])
 
-				# Load the pupils
-				for pupil_node in data["pupils"]:
-					pupil = Pupil(pupil_node["__tag"])
-					pupil.name = pupil_node["name"]
-					pupil.present = pupil_node["present"]
-
-					pupil.draw(self.canvas)
-
-					self.pupils[pupil.tag] = pupil
-
-
 				# Load the classroom's contents
 				for furnature_node in data["contents"]:
 					if furnature_node["__type"] == "Table":
@@ -371,13 +364,31 @@ class Classroom(Frame):
 
 						self.contents[furnature_node["__tag"]] = table
 					if furnature_node["__type"] == "Chair":
+
 						chair = furnature.Chair(furnature_node["__tag"])
 						chair.x = furnature_node["x"]
 						chair.y = furnature_node["y"]
+						chair.pupil_tag = furnature_node["pupil"]
 
 						chair.draw(self.canvas)
 
 						self.contents[furnature_node["__tag"]] = chair
+
+						pupil_node = next((pupil_node for pupil_node in data["pupils"] if pupil_node["__tag"] == chair.pupil_tag), None)	# Get the pupil with the chair's tag if one exists, else return None.
+
+						# Put a pupil on the chair if there is one
+						if pupil_node:
+							pupil = Pupil(pupil_node["__tag"])
+							pupil.name = pupil_node["name"]
+							pupil.present = pupil_node["present"]
+
+							self.pupils[pupil.tag] = pupil
+
+							# Calculate where to draw the pupil
+							pupil.x = (chair.x + chair.width / 2)  - (pupil.width / 2)
+							pupil.y = (chair.y + chair.height / 2) - (pupil.height / 2)
+
+							pupil.draw(self.canvas)
 
 	def save(self, loc=None):
 		# Save the classroom to JSON file
@@ -578,6 +589,12 @@ class SeatingPlan():
 		return self.classrooms[self.tabs.index("current")]
 
 if __name__ == '__main__':
-	SeatingPlan(files=sys.argv[1:])
+	import traceback, sys, pdb
+	try:
+		SeatingPlan(files=sys.argv[1:])
+	except Exception:
+		type, value, tb = sys.exc_info()
+		traceback.print_exc()
+		pdb.post_mortem(tb)
 
 #import pdb; pdb.set_trace()

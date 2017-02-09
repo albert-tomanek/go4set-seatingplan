@@ -1,5 +1,5 @@
 class Pupil:
-	def __init__(self, tag, name="", present=False, x=0, y=0):
+	def __init__(self, tag, x=0, y=0, name="", present=False):
 		self.name = str(name)
 		self.present = present
 
@@ -10,13 +10,12 @@ class Pupil:
 		self.x = x
 		self.y = y
 
-		self.canvas_repr_id = None
 		self.name_text_id = None
 
 	def draw(self, canvas):
 		# Draw ourselves on the canvas
-		self.canvas_repr_id = canvas.create_rectangle(self.x, self.y, self.x + self.width, self.y + self.height, fill="#e5d8c3")
-		canvas.itemconfig(self.canvas_repr_id, tags=(self.tag))
+		canvas_repr_id = canvas.create_rectangle(self.x, self.y, self.x+self.width, self.y+self.height, fill="#e5d8c3")
+		canvas.itemconfig(canvas_repr_id, tags=(self.tag))
 
 		self.draw_name(canvas)
 
@@ -24,7 +23,7 @@ class Pupil:
 		if self.name_text_id:
 			canvas.delete(self.name_text_id)
 
-		self.name_text_id = canvas.create_text((self.x + self.width / 2), (self.y + self.height/2))
+		self.name_text_id = canvas.create_text(self.x + (self.width / 2), self.y + (self.height/2))
 		canvas.itemconfig(self.name_text_id, tag=(self.tag + "_TEXT"), text=self.name)
 
 

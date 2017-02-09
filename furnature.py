@@ -49,7 +49,7 @@ class Chair(Furnature):
 		self.x = x
 		self.y = y
 
-		self.pupil  = pupil
+		self.pupil_tag = pupil.tag if pupil else None
 
 	def draw(self, canvas):
 		# Draw ourselves on the canvas, and keep our ID
@@ -63,7 +63,7 @@ class Chair(Furnature):
 		return {
 					"__type" : "Chair",
 					"__tag"  : self.tag,
-					"pupil"  : self.pupil.tag if self.pupil else None,
+					"pupil"  : self.pupil_tag if self.pupil_tag else None,
 					"x" : self.x,
 					"y" : self.y
 				}
