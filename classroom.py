@@ -584,22 +584,27 @@ class SeatingPlan():
 		self.root.mainloop()
 
 	def update_pupils(self, oldselecttags=[]):
-		# Clear the tree
-		for pupil_tag in self.pupilsTree.get_children():
-			self.pupilsTree.delete(pupil_tag)
-			self.current_classroom().canvas.delete(pupil_tag)
-			self.current_classroom().canvas.delete(pupil_tag + "_TEXT")
+		if self.current_classroom():
+			# Clear the tree
+			for pupil_tag in self.pupilsTree.get_children():
+				self.pupilsTree.delete(pupil_tag)
+				self.current_classroom().canvas.delete(pupil_tag)
+				self.current_classroom().canvas.delete(pupil_tag + "_TEXT")
 
-		classroom = self.current_classroom()
+			classroom = self.current_classroom()
 
-		for tag, pupil in classroom.pupils.items():
-			self.pupilsTree.insert("", 0, iid=tag, tags=(tag,), text=pupil.name, values=("Yes" if pupil.present else "No"))
-			self.pupilsTree.tag_configure(tag, background=("#44ff44" if pupil.present else "#ff4444"))
-			pupil.draw(self.current_classroom().canvas)
+			for tag, pupil in classroom.pupils.items():
+				self.pupilsTree.insert("", 0, iid=tag, tags=(tag,), text=pupil.name, values=("Yes" if pupil.present else "No"))
+				self.pupilsTree.tag_configure(tag, background=("#44ff44" if pupil.present else "#ff4444"))
+				pupil.draw(self.current_classroom().canvas)
 
-			# Select the pupil if they were previously selected
-			if tag in oldselecttags:
-				self.pupilsTree.selection_add(tag)
+				# Select the pupil if they were previously selected
+				if tag in oldselecttags:
+					self.pupilsTree.selection_add(tag)
+		else:
+			# If there aren't any classrooms open...
+			for pupil_tag in self.pupilsTree.get_children():
+				self.pupilsTree.delete(pupil_tag)
 
 	def new_classroom(self):
 		classroom = Classroom(self.root, closefunct=lambda: self.classrooms.remove(classroom))
@@ -613,7 +618,7 @@ class SeatingPlan():
 		self.tabs.add(classroom, text=classroom.nameBox.get())
 
 	def current_classroom(self):
-		return self.classrooms[self.tabs.index("current")]
+		return self.classrooms[self.tabs.index("current")] if self.tabs.tabs() != () else None
 
 if __name__ == '__main__':
 	import traceback, sys, pdb
