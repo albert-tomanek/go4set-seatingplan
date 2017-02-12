@@ -4,8 +4,10 @@ import json
 import csv
 import os
 import sys
+import random
 
 from tkinter import *
+from tkinter import messagebox
 from tkinter import filedialog
 from tkinter import ttk
 
@@ -479,10 +481,11 @@ class SeatingPlan():
 		self.addChairButton.grid(column=1, row=1, padx=10, pady=10)
 
 		self.pupilsFrame = LabelFrame(self.ctrlframe, text="Pupils")
-		self.pupilsFrame.grid(column=0, row=2, padx=5, pady=5, columnspan=2, sticky=S)
+		self.pupilsFrame.grid(column=0, row=3, padx=5, pady=5, columnspan=2, sticky=S)
+		self.ctrlframe.grid_rowconfigure(2, weight=1)
 
 		self.addPupilButton = Button(self.pupilsFrame, text="Add pupil", command=lambda: self.current_classroom().add_pupil(after=self.update_pupils))
-		self.addPupilButton.grid(column=0, row=0, padx=5, pady=5, sticky=W)
+		self.addPupilButton.grid(column=0, row=0, padx=5, pady=5)
 
 		def togglePresent():
 			for selected in self.pupilsTree.selection():
@@ -491,7 +494,7 @@ class SeatingPlan():
 			self.update_pupils (oldselecttags = self.pupilsTree.selection())
 
 		self.togglePresentButton = Button(self.pupilsFrame, text="Toggle Presence", command=togglePresent)
-		self.togglePresentButton.grid(column=1, row=0, padx=5, pady=5, sticky=W)
+		self.togglePresentButton.grid(column=1, row=0, padx=5, pady=5)
 
 		self.pupilsTree = ttk.Treeview(self.pupilsFrame)
 		self.pupilsTree.grid(column=0, row=1, padx=5, pady=5, columnspan=2)
@@ -547,6 +550,14 @@ class SeatingPlan():
 				menu.grab_release()		# Else it wouldn't close until you clicked one of its buttons.
 
 		self.pupilsTree.bind("<Button-3>", ptree_rclick_menu)
+
+		def randomPick():
+			present_pupils = [pupil for pupil in self.current_classroom().pupils.values() if pupil.present]
+			pupil = random.choice(present_pupils)
+			messagebox.showinfo("Random Pick", pupil.name)
+
+		self.RandomPickButton = Button(self.ctrlframe, text="Random pick", command=randomPick)
+		self.RandomPickButton.grid(column=0, row=4, padx=5, pady=5, columnspan=2, sticky=E+W)
 
 		# When the tab is changed...
 		self.tabs.bind("<<NotebookTabChanged>>", lambda event: self.update_pupils())
