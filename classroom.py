@@ -515,7 +515,7 @@ class SeatingPlan():
 		self.pupilsTree.grid(column=0, row=1, padx=5, pady=5, columnspan=2)
 
 		self.pupilsTree["columns"] = ("here")
-		self.pupilsTree.column("here", width=50)	# This is just used for the API
+		self.pupilsTree.column("here", width=50)	# Set the width
 		self.pupilsTree.heading("here", text="Here")
 
 		# When an element is right-clicked
@@ -593,7 +593,8 @@ class SeatingPlan():
 		classroom = self.current_classroom()
 
 		for tag, pupil in classroom.pupils.items():
-			self.pupilsTree.insert("", 0, iid=tag, text=pupil.name, values=("Yes" if pupil.present else "No"))
+			self.pupilsTree.insert("", 0, iid=tag, tags=(tag,), text=pupil.name, values=("Yes" if pupil.present else "No"))
+			self.pupilsTree.tag_configure(tag, background=("#44ff44" if pupil.present else "#ff4444"))
 			pupil.draw(self.current_classroom().canvas)
 
 			# Select the pupil if they were previously selected
