@@ -392,6 +392,21 @@ class Classroom(Frame):
 
 							pupil.draw(self.canvas)
 
+				# Load any chairless pupils
+				for pupil_node in data["pupils"]:
+					if pupil_node["__tag"] not in [pupil.tag for pupil in self.pupils.values()]:
+						pupil = Pupil(pupil_node["__tag"])
+						pupil.name = pupil_node["name"]
+						pupil.present = pupil_node["present"]
+
+						self.pupils[pupil.tag] = pupil
+
+						# Draw the pupil
+						pupil.x = 0
+						pupil.y = 0
+						pupil.draw(self.canvas)
+
+
 	def save(self, loc=None):
 		# Save the classroom to JSON file
 		if loc:
