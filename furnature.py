@@ -21,6 +21,7 @@ class Table(Furnature):
 		# Draw ourselves on the canvas
 		my_id = canvas.create_rectangle(self.x, self.y, self.x + self.width, self.y + self.height, fill="#376eb4")
 		canvas.itemconfig(my_id, tags=(self.tag))
+		canvas.tag_lower(my_id)		# So we're below pupils
 
 		self.draw_name(canvas)
 
@@ -55,6 +56,7 @@ class Chair(Furnature):
 		# Draw ourselves on the canvas, and keep our ID
 		my_id = canvas.create_oval(self.x, self.y, (self.x + self.width), (self.y + self.height), fill="#dd0000")
 		canvas.itemconfig(my_id, tags=(self.tag))
+		canvas.tag_lower(my_id)		# So we're below pupils
 
 	def get_centre(self):
 		return (self.x + (self.width/2), self.y + (self.height/2))

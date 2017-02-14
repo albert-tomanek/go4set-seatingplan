@@ -16,6 +16,7 @@ class Pupil:
 		# Draw ourselves on the canvas
 		canvas_repr_id = canvas.create_rectangle(self.x, self.y, self.x+self.width, self.y+self.height, fill="#e5d8c3")
 		canvas.itemconfig(canvas_repr_id, tags=(self.tag))
+		canvas.tag_raise(self.tag)	# So we're always above chairs and tables
 
 		self.draw_name(canvas)
 
