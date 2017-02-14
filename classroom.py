@@ -190,7 +190,7 @@ class Classroom(Frame):
 	def things(self):
 		return {**self.contents, **self.pupils}
 	def chairs(self):
-		return [thing for thing in self.contents if type(thing) == objects.Chair]
+		return [thing for thing in self.contents.values() if type(thing) == furnature.Chair]
 
 	def objects_at(self, x, y):
 		# Returns a list of objects at the given pixel
@@ -310,6 +310,9 @@ class Classroom(Frame):
 		self.contents.pop(tag)		# Not the best way, but oh well...
 
 	def new_tag(self):
+		# Generate a yet-unused tag
+		# for a new piece of furnature.
+
 		i = 1
 		tag = ""
 
@@ -342,6 +345,41 @@ class Classroom(Frame):
 		self.nameBox.delete(0, END)
 		self.contents = {}
 		self.pupils   = {}
+
+	def reseat(self):
+		# First, remove pupils from their current chairs and from the canvas
+		for chair in self.chairs():
+			self.canvas.delete(chair.pupil_tag)
+			chair.pupil_tag = None
+
+		# Sorry, this bit is kinda messy
+
+		noFreeChairsErrorShown = False
+
+		for pupil in self.pupils.values():
+			#import pdb; pdb.set_trace()
+
+			try:
+				# Pick a chair that hasn't got a pupil on it
+				chair = random.choice([chair for chair in self.chairs() if chair.pupil_tag == None])
+			except IndexError:
+				# Complain if there aren't enough chairs
+				chair = None
+
+				if not noFreeChairsErrorShown:
+					messagebox.showwarning("Not Enough Chairs", "There were not enough chairs to seat all pupils.")
+					noFreeChairsErrorShown = True
+
+			if chair:
+				chair.pupil_tag = pupil.tag
+
+				pupil.x = (chair.x + chair.width / 2)  - (pupil.width / 2)
+				pupil.y = (chair.y + chair.height / 2) - (pupil.height / 2)
+			else:
+				pupil.x = 0
+				pupil.y = 0
+
+			pupil.draw(self.canvas)
 
 	def load(self, loc=None):
 		self.reset()
@@ -506,7 +544,7 @@ class SeatingPlan():
 			for selected in self.pupilsTree.selection():
 				pupil = self.current_classroom().pupils[selected]
 				pupil.present = not pupil.present
-			self.update_pupils (oldselecttags = self.pupilsTree.selection())
+				self.update_pupils (oldselecttags = self.pupilsTree.selection())
 
 		self.togglePresentButton = Button(self.pupilsFrame, text="Toggle Presence", command=togglePresent)
 		self.togglePresentButton.grid(column=1, row=0, padx=5, pady=5)
@@ -573,6 +611,14 @@ class SeatingPlan():
 
 		self.RandomPickButton = Button(self.ctrlframe, text="Random pick", command=randomPick)
 		self.RandomPickButton.grid(column=0, row=4, padx=5, pady=5, columnspan=2, sticky=E+W)
+
+		def reseat():
+			self.current_classroom().reseat()
+			self.update_pupils()	# Kinda unnecessary I guess, but I added it just in case...
+
+		self.RandomSeatingPlanButton = Button(self.ctrlframe, text="Random Seating Plan", command=reseat)
+		self.RandomSeatingPlanButton.grid(column=0, row=5, padx=5, pady=5, columnspan=2, sticky=E+W)
+
 
 		# When the tab is changed...
 		self.tabs.bind("<<NotebookTabChanged>>", lambda event: self.update_pupils())
