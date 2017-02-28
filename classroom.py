@@ -632,6 +632,8 @@ class SeatingPlan():
 		self.RandomSeatingPlanButton = Button(self.ctrlframe, text="Random Seating Plan", command=reseat)
 		self.RandomSeatingPlanButton.grid(column=0, row=5, padx=5, pady=5, columnspan=2, sticky=E+W)
 
+		# Everyone likes a good easter egg...
+		self.root.bind("<Alt-Up>", lambda f: widgets.Bug_Fixes(self.root))
 
 		# When the tab is changed...
 		self.tabs.bind("<<NotebookTabChanged>>", lambda event: self.update_pupils())
