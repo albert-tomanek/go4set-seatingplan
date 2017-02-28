@@ -283,6 +283,7 @@ class Classroom(Frame):
 		nameEntry = Entry(dialog)
 		nameLabel.grid(column=0, row=0, padx=10, pady=10, sticky=W)
 		nameEntry.grid(column=1, row=0, padx=10, pady=10, sticky=W)
+		nameEntry.focus_set()
 
 		def ok(*args):
 			pupil = Pupil(self.new_pupil_tag(), name=nameEntry.get())
@@ -583,6 +584,7 @@ class SeatingPlan():
 					nameEntry = Entry(dialog)
 					nameLabel.grid(column=0, row=0, padx=10, pady=10, sticky=W)
 					nameEntry.grid(column=1, row=0, padx=10, pady=10, sticky=W)
+					nameEntry.focus_set()
 
 					nameEntry.insert(0, pupil.name)
 
