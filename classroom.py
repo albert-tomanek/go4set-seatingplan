@@ -243,8 +243,15 @@ class Classroom(Frame):
 		nameLabel.grid(column=0, row=2, padx=10, pady=10, sticky=W)
 		nameEntry.grid(column=1, row=2, padx=10, pady=10, sticky=W)
 
+		shapeVar  = StringVar(dialog)
+		shapeVar.set("Rectangle");
+		shapeLabel = Label(dialog, text="Shape:")
+		shapeMenu = OptionMenu(dialog, shapeVar, "Rectangle", "Oval")
+		shapeLabel.grid(column=0, row=3, padx=10, pady=10, sticky=W)
+		shapeMenu.grid(column=1, row=3, padx=10, pady=10, sticky=W)
+
 		def ok(*args):
-			table = furnature.Table(self.new_tag(), name=nameEntry.get(), width=int(widthEntry.get()), height=int(heightEntry.get()), x=x, y=y)
+			table = furnature.Table(self.new_tag(), ellipse=(True if shapeVar.get() == "Oval" else False), name=nameEntry.get(), width=int(widthEntry.get()), height=int(heightEntry.get()), x=x, y=y)
 			table.draw(self.canvas)
 			self.contents[table.tag] = table
 			dialog.destroy()
@@ -253,7 +260,7 @@ class Classroom(Frame):
 			dialog.destroy()
 
 		buttonFrame  = Frame(dialog)
-		buttonFrame.grid(column=0, row=3, columnspan=2, padx=10, pady=10)
+		buttonFrame.grid(column=0, row=4, columnspan=2, padx=10, pady=10)
 		okButton     = Button(buttonFrame, text="Ok", command=ok)
 		cancelButton = Button(buttonFrame, text="Cancel", command=cancel)
 		okButton.grid(column=1, row=0, padx=10)
@@ -395,6 +402,10 @@ class Classroom(Frame):
 					if furnature_node["__type"] == "Table":
 						table = furnature.Table(furnature_node["__tag"])
 						table.name  = furnature_node["name"]
+						try:
+							table.ellipse = furnature_node["ellipse"]
+						except KeyError:
+							table.ellipse = False
 						table.width = furnature_node["width"]
 						table.height = furnature_node["height"]
 						table.x = furnature_node["x"]
