@@ -1,5 +1,9 @@
 #!/usr/bin/python3
 
+# You need to put the scanner dialog into the control bar, Albert,
+# so that the application has a more streamlined look.
+# You've also got to implement signing in.
+
 import json
 import csv
 import os
@@ -40,8 +44,12 @@ def canvas_get(canvas, x, y):
 			return canvas.gettags(things[-1])[0]	# There'll only ever be one thing per tag anyway
 
 class Classroom(Frame):
-	def __init__(self, root, closefunct=None):
+	NO_SCANNER = True
+
+	def __init__(self, root, closefunct=None, noscanner=False):
 		super(Classroom, self).__init__(root)	# Initialise the superclass
+
+		self.NO_SCANNER = noscanner
 
 		# Create instance variables
 		self.closefunct = closefunct
@@ -274,7 +282,9 @@ class Classroom(Frame):
 		self.contents[chair.tag] = chair
 
 	def add_pupil(self, after=None):
-		# What to do when the 'Add Table' button is pressed
+		# What to do when the 'Add Pupil' button is pressed
+
+		pupil_tag = self.new_pupil_tag()
 
 		dialog = Toplevel(master=self.canvas)
 		dialog.title("Add Pupil")
@@ -285,8 +295,23 @@ class Classroom(Frame):
 		nameEntry.grid(column=1, row=0, padx=10, pady=10, sticky=W)
 		nameEntry.focus_set()
 
+		idLabel = Label(dialog, text="Scanner ID:")
+		idEntry = Entry(dialog, state=DISABLED)
+		idLabel.grid(column=0, row=1, padx=10, pady=10, sticky=W)
+		idEntry.grid(column=1, row=1, padx=10, pady=10, sticky=W)
+
+		def update_idEntry(id):
+			idEntry.config(state=NORMAL)
+			idEntry.delete(0, END)
+			idEntry.insert(0, str(id))
+			idEntry.config(state=DISABLED)
+
+		scannerWidget = widgets.RegisterFPrintWidget(dialog, pupiltag=pupil_tag, returnfunct=update_idEntry, noscanner=self.NO_SCANNER)
+		scannerWidget.grid(column=1, row=2, padx=10, pady=10)
+
 		def ok(*args):
-			pupil = Pupil(self.new_pupil_tag(), name=nameEntry.get())
+			pupil = Pupil(pupil_tag, name=nameEntry.get())
+			pupil.scanner_id = scannerWidget.get_id()
 			self.pupils[pupil.tag] = pupil
 			dialog.destroy()
 
@@ -299,7 +324,7 @@ class Classroom(Frame):
 			dialog.destroy()
 
 		buttonFrame  = Frame(dialog)
-		buttonFrame.grid(column=0, row=1, columnspan=2, padx=10, pady=10)
+		buttonFrame.grid(column=0, row=3, columnspan=2, padx=10, pady=10)
 		okButton     = Button(buttonFrame, text="Ok", command=ok)
 		cancelButton = Button(buttonFrame, text="Cancel", command=cancel)
 		okButton.grid(column=1, row=0, padx=10)
@@ -431,6 +456,7 @@ class Classroom(Frame):
 						# Put a pupil on the chair if there is one
 						if pupil_node:
 							pupil = Pupil(pupil_node["__tag"])
+							pupil.scanner_id = pupil_node["__scanner_id"]
 							pupil.name = pupil_node["name"]
 							pupil.present = pupil_node["present"]
 
@@ -446,6 +472,7 @@ class Classroom(Frame):
 				for pupil_node in data["pupils"]:
 					if pupil_node["__tag"] not in [pupil.tag for pupil in self.pupils.values()]:
 						pupil = Pupil(pupil_node["__tag"])
+						pupil.scanner_id = pupil_node["__scanner_id"]
 						pupil.name = pupil_node["name"]
 						pupil.present = pupil_node["present"]
 
@@ -487,7 +514,11 @@ class Classroom(Frame):
 		self.destroy()
 
 class SeatingPlan():
-	def __init__(self, files=[]):
+	NO_SCANNER = False
+
+	def __init__(self, files=[], noscanner=False):
+		self.NO_SCANNER = noscanner
+
 		self.root = Tk()
 		self.root.title("Seating Plan")
 
@@ -564,9 +595,12 @@ class SeatingPlan():
 		self.pupilsTree = ttk.Treeview(self.pupilsFrame)
 		self.pupilsTree.grid(column=0, row=1, padx=5, pady=5, columnspan=2)
 
-		self.pupilsTree["columns"] = ("here")
+		self.pupilsTree["columns"] = ("here", "id") if self.NO_SCANNER else ("here")
 		self.pupilsTree.column("here", width=50)	# Set the width
 		self.pupilsTree.heading("here", text="Here")
+		if self.NO_SCANNER:
+			self.pupilsTree.column("id", width=25)	# Set the width
+			self.pupilsTree.heading("id", text="ID")
 
 		# When an element is right-clicked
 		def ptree_rclick_menu(event):
@@ -605,11 +639,38 @@ class SeatingPlan():
 					cancelButton.grid(column=0, row=0, padx=10)
 
 					dialog.bind("<Return>", ok)
+				def reg_fprint(pupil):
+					dialog = Toplevel(master=self.current_classroom().canvas)
+					dialog.title("Register Fingerprint")
+
+					def ok(*args):
+						pupil.scanner_id = scannerWidget.get_id();
+						self.update_pupils()
+
+						dialog.destroy()
+
+					def cancel(*args):
+						dialog.destroy()
+
+					buttonFrame  = Frame(dialog)
+					buttonFrame.grid(column=0, row=1, columnspan=2, padx=10, pady=10)
+					button     = Button(buttonFrame, text="Cancel", command=cancel)
+					button.grid(column=0, row=0, padx=10)
+
+					def switchButton(id):
+						if id:
+							button.config(text="Ok", command=ok)
+
+					scannerWidget = widgets.RegisterFPrintWidget(dialog, pupiltag=pupil.tag, returnfunct=switchButton, noscanner=self.NO_SCANNER)
+					scannerWidget.grid(column=0, row=0, padx=10, pady=10)
+
 				def removePupil(pupil):
 					self.current_classroom().pupils.pop(pupil_tag)
 					self.update_pupils()
 
 				menu.add_command(label="Rename", command=lambda: renamePupil(pupil))
+				menu.add_command(label="Register Fingerprint", command=lambda: reg_fprint(pupil))
+				menu.add_separator()
 				menu.add_command(label="Remove", command=lambda: removePupil(pupil))
 
 				menu.tk_popup(event.x_root, event.y_root)		# _root => x and y of it in the whole roow window
@@ -655,7 +716,7 @@ class SeatingPlan():
 			classroom = self.current_classroom()
 
 			for tag, pupil in classroom.pupils.items():
-				self.pupilsTree.insert("", 0, iid=tag, tags=(tag,), text=pupil.name, values=("Yes" if pupil.present else "No"))
+				self.pupilsTree.insert("", 0, iid=tag, tags=(tag,), text=pupil.name, values=(("Yes" if pupil.present else "No"), (str(pupil.scanner_id) if pupil.scanner_id else "")))
 				self.pupilsTree.tag_configure(tag, background=("#44ff44" if pupil.present else "#ff4444"))
 				pupil.draw(self.current_classroom().canvas)
 
@@ -668,7 +729,7 @@ class SeatingPlan():
 				self.pupilsTree.delete(pupil_tag)
 
 	def new_classroom(self):
-		classroom = Classroom(self.root, closefunct=lambda: self.classrooms.remove(classroom))
+		classroom = Classroom(self.root, closefunct=lambda: self.classrooms.remove(classroom), noscanner=self.NO_SCANNER)
 		self.classrooms.append(classroom)
 		self.tabs.add(classroom, text="New classroom")
 
@@ -684,7 +745,7 @@ class SeatingPlan():
 if __name__ == '__main__':
 	import traceback, sys, pdb
 	try:
-		SeatingPlan(files=sys.argv[1:])
+		SeatingPlan(files=sys.argv[1:], noscanner=True)
 	except Exception:
 		type, value, tb = sys.exc_info()
 		traceback.print_exc()

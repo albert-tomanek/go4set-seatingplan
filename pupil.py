@@ -1,9 +1,10 @@
 class Pupil:
-	def __init__(self, tag, x=0, y=0, name="", present=False):
+	def __init__(self, tag, x=0, y=0, name="", scanner_id=None, present=False):
 		self.name = str(name)
 		self.present = present
 
 		self.tag = tag
+		self.scanner_id = scanner_id
 
 		self.width  = 40
 		self.height = 15
@@ -27,11 +28,15 @@ class Pupil:
 		self.name_text_id = canvas.create_text(self.x + (self.width / 2), self.y + (self.height/2))
 		canvas.itemconfig(self.name_text_id, tag=(self.tag + "_TEXT"), text=self.name)
 
+	def get_id(self):
+		# This is not going to work unles the tag is of format 'PUPIL_%d'
+		return int(self.tag.split('_')[-1])
 
 	def json(self):
 		return {
 					"__type"  : "Pupil",
 					"__tag"   : self.tag,
+					"__scanner_id" : self.scanner_id,
 					"name"    : self.name,
 					"present" : self.present
 				}
