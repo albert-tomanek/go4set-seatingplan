@@ -7,24 +7,28 @@ GIF_NOFINGER = """R0lGODdhbACMAPMAACsrKzQ0NDw8PERERExMTFRUVFxcXGRkZGtra3R0dHt7e4
 
 class RegisterFPrintWidget(LabelFrame):
 	NO_SCANNER = False
-	def __init__(self, parent, pupiltag=None, noscanner=False, returnfunct=None, titletext="Register Fingerprint"):
+	def __init__(self, parent, pupiltag=None, noscanner=False, returnfunct=None, titletext="Register Fingerprint", killOnSuccess=False):
 		super(RegisterFPrintWidget, self).__init__(parent, text=titletext)
 
 		self.NO_SCANNER  = noscanner
 		self.pupiltag    = pupiltag
 		self.returnfunct = returnfunct
+		self.parent      = parent
+		self.killOnSuccess   = killOnSuccess
 		self.scanning_thread = None
 		self.scanner_id = None
 		self.photoimage = None
 		self.scanning   = False
+		self.numentry   = ""
 
 		# Expand widgets in column 1 to fill the whole frame
 		self.grid_columnconfigure(0, weight=1)
 
 		self.fprint_image_frame = Frame(self, width=108, height=140, relief="sunken", borderwidth=1)
+		self.fprint_image_frame.pack_propagate(0)
 		self.fprint_image_frame.grid(column=0, row=0, padx=5, pady=5)
 		self.fprint_image = Label(self.fprint_image_frame, text="No Fingerprint\nScanned")
-		self.fprint_image.pack(expand=1)
+		self.fprint_image.pack(expand=1, fill=BOTH)
 
 		def trigger_scan():
 			self.scanning = False		# Stop an existing thread if it's running
@@ -40,37 +44,62 @@ class RegisterFPrintWidget(LabelFrame):
 		self.bind("<Prior>", lambda event: self.end_scan(success=True))		# PageUp
 		self.bind("<Next>",  lambda event: self.end_scan(success=False))	# PageDown
 
+		if self.NO_SCANNER:
+			self.bind("<Key>", self.append_numkey)
+
 		self.focus_set()
 
 		self.fprint_image.config(text="Scanning...")
 		self.scan_button.config(text="Scanning...")
 
 		self.scanning = True
-		while self.scanning:		# Just to end the thread when it's not needed anymore
+		while self.scanning:		# Wait until the scanning's finished.
 			sleep(1)
 
+		# Close the parent window after N seconds if told to do so
+
+		if bool(self.killOnSuccess) and (self.scanner_id != None and self.scanner_id != False):		# I can't just do bool(self.scanner_id), because bool(0) is False, but the pupil's scanner ID may be 0.
+			sleep(int(self.killOnSuccess))
+			if self.killOnSuccess:				# Check if they haven't changed their mind...
+				self.parent.destroy()
+
+
 	def end_scan(self, success=True):
-		self.scanning = False
 		self.scan_button.config(text="Scan Finger")
 		self.bind("<Prior>", self.nothing)		# Unbind the keypresses
 		self.bind("<Next>",  self.nothing)
+		self.bind("<Key>",   self.nothing)
 
 		if success:
 			self.photoimage = PhotoImage(data=GIF_FINGER)
 
 			if self.NO_SCANNER:
-				self.scanner_id = int(self.pupiltag.split('_')[-1])
+				if self.numentry != "":
+					self.scanner_id = str(self.numentry)
+				elif self.pupiltag:
+					self.scanner_id = int(self.pupiltag.split('_')[-1])
+				else:
+					self.scanner_id = True
 			else:
 				# No scanner support yet :'-(
 				pass
 		else:
 			self.photoimage = PhotoImage(data=GIF_NOFINGER)
 
+			if self.NO_SCANNER:
+				self.scanner_id = False
+
 		self.fprint_image.config(image=self.photoimage)
 		self.fprint_image.image = self.photoimage
 
+		self.scanning = False
+
 		if self.returnfunct:
 			self.returnfunct(self.scanner_id)
+
+	def append_numkey(self, event):
+		if event.char.isdecimal():
+			self.numentry += event.char
 
 	def get_id(self):
 		return self.scanner_id

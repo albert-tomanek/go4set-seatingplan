@@ -28,10 +28,6 @@ class Pupil:
 		self.name_text_id = canvas.create_text(self.x + (self.width / 2), self.y + (self.height/2))
 		canvas.itemconfig(self.name_text_id, tag=(self.tag + "_TEXT"), text=self.name)
 
-	def get_id(self):
-		# This is not going to work unles the tag is of format 'PUPIL_%d'
-		return int(self.tag.split('_')[-1])
-
 	def json(self):
 		return {
 					"__type"  : "Pupil",

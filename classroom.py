@@ -289,25 +289,29 @@ class Classroom(Frame):
 		dialog = Toplevel(master=self.canvas)
 		dialog.title("Add Pupil")
 
-		nameLabel = Label(dialog, text="Name:")
-		nameEntry = Entry(dialog)
+		entryBoxesFrame = Frame(dialog)
+		entryBoxesFrame.grid(column=0, row=0)
+
+		nameLabel = Label(entryBoxesFrame, text="Name:")
+		nameEntry = Entry(entryBoxesFrame)
 		nameLabel.grid(column=0, row=0, padx=10, pady=10, sticky=W)
 		nameEntry.grid(column=1, row=0, padx=10, pady=10, sticky=W)
 		nameEntry.focus_set()
 
-		idLabel = Label(dialog, text="Scanner ID:")
-		idEntry = Entry(dialog, state=DISABLED)
+		idLabel = Label(entryBoxesFrame, text="Scanner ID:")
+		idEntry = Entry(entryBoxesFrame, state=DISABLED)
 		idLabel.grid(column=0, row=1, padx=10, pady=10, sticky=W)
 		idEntry.grid(column=1, row=1, padx=10, pady=10, sticky=W)
 
 		def update_idEntry(id):
-			idEntry.config(state=NORMAL)
-			idEntry.delete(0, END)
-			idEntry.insert(0, str(id))
-			idEntry.config(state=DISABLED)
+			if id:
+				idEntry.config(state=NORMAL)
+				idEntry.delete(0, END)
+				idEntry.insert(0, str(id))
+				idEntry.config(state=DISABLED)
 
 		scannerWidget = widgets.RegisterFPrintWidget(dialog, pupiltag=pupil_tag, returnfunct=update_idEntry, noscanner=self.NO_SCANNER)
-		scannerWidget.grid(column=1, row=2, padx=10, pady=10)
+		scannerWidget.grid(column=2, row=0, rowspan=3, padx=10, pady=10)
 
 		def ok(*args):
 			pupil = Pupil(pupil_tag, name=nameEntry.get())
@@ -324,13 +328,22 @@ class Classroom(Frame):
 			dialog.destroy()
 
 		buttonFrame  = Frame(dialog)
-		buttonFrame.grid(column=0, row=3, columnspan=2, padx=10, pady=10)
+		buttonFrame.grid(column=0, row=2, columnspan=1, padx=10, pady=10)
 		okButton     = Button(buttonFrame, text="Ok", command=ok)
 		cancelButton = Button(buttonFrame, text="Cancel", command=cancel)
 		okButton.grid(column=1, row=0, padx=10)
 		cancelButton.grid(column=0, row=0, padx=10)
 
 		dialog.bind("<Return>", ok)
+
+	def getPupilByScannerId(self, id):
+		if id == True or not id:
+			return None
+		for pupil in self.pupils.values():
+			if pupil.scanner_id:
+				if int(pupil.scanner_id) == int(id):
+					return pupil
+		return None
 
 	def remove(self, tag):
 		rm_thing = self.contents[tag]
@@ -521,6 +534,7 @@ class SeatingPlan():
 
 		self.root = Tk()
 		self.root.title("Seating Plan")
+		self.root.resizable(0, 0);
 
 		# Create the menus
 
@@ -652,17 +666,19 @@ class SeatingPlan():
 					def cancel(*args):
 						dialog.destroy()
 
-					buttonFrame  = Frame(dialog)
-					buttonFrame.grid(column=0, row=1, columnspan=2, padx=10, pady=10)
-					button     = Button(buttonFrame, text="Cancel", command=cancel)
-					button.grid(column=0, row=0, padx=10)
-
-					def switchButton(id):
+					def switchButton(button, id):
 						if id:
 							button.config(text="Ok", command=ok)
 
-					scannerWidget = widgets.RegisterFPrintWidget(dialog, pupiltag=pupil.tag, returnfunct=switchButton, noscanner=self.NO_SCANNER)
+					scannerWidget = widgets.RegisterFPrintWidget(dialog, pupiltag=pupil.tag, noscanner=self.NO_SCANNER)
 					scannerWidget.grid(column=0, row=0, padx=10, pady=10)
+
+					scannerWidget.fprint_image_frame.grid_configure(columnspan=2)
+
+					button     = Button(scannerWidget, text="Cancel", command=cancel)
+					button.grid(column=1, row=1, padx=10, pady=10)
+
+					scannerWidget.returnfunct = lambda id: switchButton(button, id)
 
 				def removePupil(pupil):
 					self.current_classroom().pupils.pop(pupil_tag)
@@ -677,6 +693,9 @@ class SeatingPlan():
 				menu.grab_release()		# Else it wouldn't close until you clicked one of its buttons.
 
 		self.pupilsTree.bind("<Button-3>", ptree_rclick_menu)
+
+		self.signInButton = Button(self.pupilsFrame, text="Sign in with Fingerprint", command=self.sign_in)
+		self.signInButton.grid(column=0, row=2, padx=5, pady=5, columnspan=2, sticky=E+W)
 
 		def randomPick():
 			present_pupils = [pupil for pupil in self.current_classroom().pupils.values() if pupil.present]
@@ -728,13 +747,53 @@ class SeatingPlan():
 			for pupil_tag in self.pupilsTree.get_children():
 				self.pupilsTree.delete(pupil_tag)
 
+	def sign_in(self):
+		# Sign a pupil in with their 'fingerprint'
+
+		classroom = self.current_classroom()
+
+		dialog = Toplevel(master=self.root)
+		dialog.title("Sign in with Fingerprint")
+
+		idEntry = Entry(dialog)
+		idEntry.insert(0, "Please scan your finger.")
+		idEntry.config(state="readonly")
+		idEntry.grid(column=0, row=1, padx=10, pady=10)
+
+		def signin(id):
+			if id:
+				pupil = self.current_classroom().getPupilByScannerId(id)
+
+				if not pupil:
+					idEntry.config(state=NORMAL)
+					idEntry.delete(0, END)
+					idEntry.insert(0, "ID " + str(id) + " is not registered.")
+					idEntry.config(state="readonly")
+				else:
+					pupil.present = True
+
+					idEntry.config(state=NORMAL)
+					idEntry.delete(0, END)
+					idEntry.insert(0, "Welcome, " + pupil.name + "!")
+					idEntry.config(state="readonly")
+
+				self.update_pupils()
+			else:
+				idEntry.config(state=NORMAL)
+				idEntry.delete(0, END)
+				idEntry.insert(0, "Please try again.")
+				idEntry.config(state="readonly")
+
+		scannerWidget = widgets.RegisterFPrintWidget(dialog, returnfunct=signin, killOnSuccess=3, noscanner=self.NO_SCANNER)
+		scannerWidget.grid(column=0, row=0, padx=10, pady=10)
+
 	def new_classroom(self):
 		classroom = Classroom(self.root, closefunct=lambda: self.classrooms.remove(classroom), noscanner=self.NO_SCANNER)
 		self.classrooms.append(classroom)
 		self.tabs.add(classroom, text="New classroom")
 
 	def load_classroom(self, loc):
-		classroom = Classroom(self.root, closefunct=lambda: self.classrooms.remove(classroom))
+		classroom = Classroom(self.root, closefunct=lambda: self.classrooms.remove(classroom), noscanner=self.NO_SCANNER)
 		classroom.load(loc)
 		self.classrooms.append(classroom)
 		self.tabs.add(classroom, text=classroom.nameBox.get())
