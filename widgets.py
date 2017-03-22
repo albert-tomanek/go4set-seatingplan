@@ -107,6 +107,128 @@ class RegisterFPrintWidget(LabelFrame):
 	def nothing(self, *args):
 		pass
 
+class SignInFPrintWidget(Frame):
+	# Low-level part of the Scanner class from classroom.py
+
+	NO_SCANNER = False
+	def __init__(self, parent, pupiltag=None, noscanner=False, clearfunct=None, returnfunct=None, failfunct=None):
+		super(SignInFPrintWidget, self).__init__(parent)
+
+		self.NO_SCANNER  = noscanner
+		self.pupiltag    = pupiltag
+		self.returnfunct = returnfunct
+		self.clearfunct  = clearfunct
+		self.parent      = parent
+		self.scanning_thread = None
+		self.scanner_id = None
+		self.photoimage = None
+		self.scanning   = False
+		self.numentry   = ""
+
+		# Expand widgets in column 1 to fill the whole frame
+		self.grid_columnconfigure(0, weight=1)
+
+		self.fprint_image_frame = Frame(self, width=108, height=140, relief="sunken", borderwidth=1)
+		self.fprint_image_frame.pack_propagate(0)
+		self.fprint_image_frame.grid(column=0, row=0, padx=5, pady=5)
+		self.fprint_image = Label(self.fprint_image_frame, text="No Fingerprint\nScanned")
+		self.fprint_image.pack(expand=1, fill=BOTH)
+
+		self.scan_button = Button(self, text="Scan Finger", command=self.trigger_scan)
+		self.scan_button.grid(column=0, row=1, padx=5, pady=5)
+
+	def trigger_scan(self):
+		self.numentry = ""
+		self.scanning = False		# Stop an existing thread if it's running
+
+		self.scanning_thread = Thread(target=self.scan, args=())
+		self.scanning_thread.start()
+
+	def scan(self):
+		# Dummy code for when no scanner is connected
+		self.bind("<Prior>", lambda event: self.end_scan(success=True))		# PageUp
+		self.bind("<Next>",  lambda event: self.end_scan(success=False))	# PageDown
+		self.grid_columnconfigure(0, weight=1)
+
+		if self.NO_SCANNER:
+			self.bind("<Key>", self.append_numkey)
+
+		self.focus_set()
+
+		self.fprint_image.config(text="Scanning...")
+		self.scan_button.config(text="Scanning...")
+
+		self.scanning = True
+		while self.scanning:		# Wait until the scanning's finished.
+			sleep(1)
+
+		sleep(3)
+
+		# Clear the widget AFTER 3 SECONDS
+		self.scanner_id = None
+		self.fprint_image.config(image='', text='No Fingerprint\nScanned')
+
+		if self.clearfunct:
+			self.clearfunct()
+
+	def end_scan(self, success=True):
+		self.scan_button.config(text="Scan Finger")
+		self.bind("<Prior>", self.nothing)		# Unbind the keypresses
+		self.bind("<Next>",  self.nothing)
+		self.bind("<Key>",   self.nothing)
+
+
+		if success:
+			self.photoimage = PhotoImage(data=GIF_FINGER)
+			if self.NO_SCANNER:
+				if self.numentry != "":
+					self.scanner_id = str(self.numentry)
+				elif self.pupiltag:
+					self.scanner_id = int(self.pupiltag.split('_')[-1])
+				else:
+					self.scanner_id = True
+			else:
+				# No scanner support yet :'-(
+				pass
+		else:
+			self.photoimage = PhotoImage(data=GIF_NOFINGER)
+
+			if self.NO_SCANNER:
+				self.scanner_id = False
+
+		self.fprint_image.config(image=self.photoimage)
+		self.fprint_image.image = self.photoimage
+
+		self.scanning = False	# End the scanning thread
+
+		if self.returnfunct:
+			self.returnfunct(self.scanner_id)
+
+	def append_numkey(self, event):
+		if event.char.isdecimal():
+			self.numentry += event.char
+
+	def get_id(self):
+		return self.scanner_id
+
+	def nothing(self, *args):
+		pass
+
+class ValueBox(Frame):
+    def __init__(self, master, text='', width=20):
+        Frame.__init__(self, master)
+
+        self.box = Entry(self, width=width)
+        self.box.pack()
+        self.box.config(state="readonly")
+
+        self.update(text)
+    def update(self, text):
+        self.box.config(state=NORMAL)
+        self.box.delete(0, END)
+        self.box.insert(END, str(text))
+        self.box.config(state="readonly")
+
 class NumEntry(Frame):
 	def __init__(self, parent, default=None, step=1, max_val=10000, min_val=0):
 		super(NumEntry, self).__init__(parent)		# Initialise the superclass

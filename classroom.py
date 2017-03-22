@@ -9,6 +9,7 @@ import csv
 import os
 import sys
 import random
+import time
 
 from tkinter import *
 from tkinter import messagebox
@@ -526,6 +527,74 @@ class Classroom(Frame):
 			self.closefunct()
 		self.destroy()
 
+class Scanner(LabelFrame):
+	NO_SCANNER   = False
+	CONSTANTSCAN = False
+	def __init__(self, parent, classroom=None, title='Scanner', updatepupilsfunct=None, noscanner=False):
+		self.NO_SCANNER = noscanner
+		self.classroom  = classroom
+		self.updatepupilsfunct = updatepupilsfunct
+		self.mode = 'SIGN_IN'
+
+		super(Scanner, self).__init__(parent, text=title)
+		self.grid_columnconfigure(0, weight=1)
+
+		self.infobox = widgets.ValueBox(self, width=40)
+		self.infobox.update("Scan your finger to sign in.")
+		self.infobox.grid(column=0, row=1, padx=10, pady=10, sticky=E+W)
+
+		self.scannerWidget = widgets.SignInFPrintWidget(self, returnfunct=self.sign_in, noscanner=self.NO_SCANNER, clearfunct=self.reset)
+		self.scannerWidget.grid(column=0, row=0, padx=10, pady=10, sticky=E+W)
+		self.scannerWidget.scan_button.grid_forget()
+		self.scannerWidget.fprint_image_frame.grid_configure(padx=0, sticky=E+W)
+
+		# Start scanning immediatley if configured to do so
+		if self.CONSTANTSCAN:
+			self.scan_to_sign_in()
+
+	def change_classroom(self, classroom):
+		self.classroom = classroom
+
+	def reset(self):
+		self.mode = 'SIGN_IN'
+		self.infobox.update("Scan your finger to sign in.")
+
+	def scan_to_sign_in(self, event=None):
+		self.mode = 'SIGN_IN'
+		self.scannerWidget.trigger_scan()
+
+	def sign_in(self, id):
+		if id:
+			pupil = self.classroom.getPupilByScannerId(id)
+
+			if not pupil:
+				if id == True:
+					self.infobox.update("Sorry, you're not part of this class!")
+				else:
+					self.infobox.update("ID " + str(id) + " is not registered.")
+			else:
+				pupil.present = True
+
+				# Come up with some greetings to say
+				greetings = ["Welcome", "Hello", "Hi", "Good to see you"]
+				if 5 < int(time.strftime("%H")) < 12:
+					greetings.append("Good morning")
+				if 12 < int(time.strftime("%H")) < 17:
+					greetings.append("Good afternoon")
+				if 17 < int(time.strftime("%H")) < 22:
+					greetings.append("Good evening")
+
+				# Greet them
+				self.infobox.update(random.choice(greetings) + ", " + pupil.name + "!")
+
+				self.updatepupilsfunct()
+		else:
+			self.infobox.update("Please try again.")
+
+		# Scan again immediatley if configured to do so
+		if self.CONSTANTSCAN:
+			self.scan_to_sign_in()
+
 class SeatingPlan():
 	NO_SCANNER = False
 
@@ -590,8 +659,17 @@ class SeatingPlan():
 		self.addChairButton = Button(self.ctrlframe, text="New Chair", command=lambda: self.current_classroom().add_chair())
 		self.addChairButton.grid(column=1, row=1, padx=10, pady=10)
 
+		# 'Scanner'
+
+		self.scanner = Scanner(self.ctrlframe, classroom=self.current_classroom(), noscanner=self.NO_SCANNER, updatepupilsfunct=self.update_pupils)
+		self.scanner.grid(column=0, row=3, padx=5, pady=5, columnspan=2, sticky=S+E+W)
+
+		self.root.bind('<Insert>', self.scanner.scan_to_sign_in)
+
+		# 'Pupils'
+
 		self.pupilsFrame = LabelFrame(self.ctrlframe, text="Pupils")
-		self.pupilsFrame.grid(column=0, row=3, padx=5, pady=5, columnspan=2, sticky=S)
+		self.pupilsFrame.grid(column=0, row=4, padx=5, pady=5, columnspan=2, sticky=S)
 		self.ctrlframe.grid_rowconfigure(2, weight=1)
 
 		self.addPupilButton = Button(self.pupilsFrame, text="Add pupil", command=lambda: self.current_classroom().add_pupil(after=self.update_pupils))
@@ -694,23 +772,20 @@ class SeatingPlan():
 
 		self.pupilsTree.bind("<Button-3>", ptree_rclick_menu)
 
-		self.signInButton = Button(self.pupilsFrame, text="Sign in with Fingerprint", command=self.sign_in)
-		self.signInButton.grid(column=0, row=2, padx=5, pady=5, columnspan=2, sticky=E+W)
-
 		def randomPick():
 			present_pupils = [pupil for pupil in self.current_classroom().pupils.values() if pupil.present]
 			pupil = random.choice(present_pupils)
 			messagebox.showinfo("Random Pick", pupil.name)
 
 		self.RandomPickButton = Button(self.ctrlframe, text="Random pick", command=randomPick)
-		self.RandomPickButton.grid(column=0, row=4, padx=5, pady=5, columnspan=2, sticky=E+W)
+		self.RandomPickButton.grid(column=0, row=5, padx=5, pady=5, columnspan=2, sticky=E+W)
 
 		def reseat():
 			self.current_classroom().reseat()
 			self.update_pupils()	# Kinda unnecessary I guess, but I added it just in case...
 
 		self.RandomSeatingPlanButton = Button(self.ctrlframe, text="Random Seating Plan", command=reseat)
-		self.RandomSeatingPlanButton.grid(column=0, row=5, padx=5, pady=5, columnspan=2, sticky=E+W)
+		self.RandomSeatingPlanButton.grid(column=0, row=6, padx=5, pady=5, columnspan=2, sticky=E+W)
 
 		# Everyone likes a good easter egg...
 		self.root.bind("<Alt-Up>", lambda f: widgets.Bug_Fixes(self.root))
@@ -725,6 +800,8 @@ class SeatingPlan():
 		self.root.mainloop()
 
 	def update_pupils(self, oldselecttags=[]):
+		self.scanner.change_classroom(self.current_classroom())
+
 		if self.current_classroom():
 			# Clear the tree
 			for pupil_tag in self.pupilsTree.get_children():
@@ -746,46 +823,6 @@ class SeatingPlan():
 			# If there aren't any classrooms open...
 			for pupil_tag in self.pupilsTree.get_children():
 				self.pupilsTree.delete(pupil_tag)
-
-	def sign_in(self):
-		# Sign a pupil in with their 'fingerprint'
-
-		classroom = self.current_classroom()
-
-		dialog = Toplevel(master=self.root)
-		dialog.title("Sign in with Fingerprint")
-
-		idEntry = Entry(dialog)
-		idEntry.insert(0, "Please scan your finger.")
-		idEntry.config(state="readonly")
-		idEntry.grid(column=0, row=1, padx=10, pady=10)
-
-		def signin(id):
-			if id:
-				pupil = self.current_classroom().getPupilByScannerId(id)
-
-				if not pupil:
-					idEntry.config(state=NORMAL)
-					idEntry.delete(0, END)
-					idEntry.insert(0, "ID " + str(id) + " is not registered.")
-					idEntry.config(state="readonly")
-				else:
-					pupil.present = True
-
-					idEntry.config(state=NORMAL)
-					idEntry.delete(0, END)
-					idEntry.insert(0, "Welcome, " + pupil.name + "!")
-					idEntry.config(state="readonly")
-
-				self.update_pupils()
-			else:
-				idEntry.config(state=NORMAL)
-				idEntry.delete(0, END)
-				idEntry.insert(0, "Please try again.")
-				idEntry.config(state="readonly")
-
-		scannerWidget = widgets.RegisterFPrintWidget(dialog, returnfunct=signin, killOnSuccess=3, noscanner=self.NO_SCANNER)
-		scannerWidget.grid(column=0, row=0, padx=10, pady=10)
 
 	def new_classroom(self):
 		classroom = Classroom(self.root, closefunct=lambda: self.classrooms.remove(classroom), noscanner=self.NO_SCANNER)
