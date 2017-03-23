@@ -145,10 +145,12 @@ class Classroom(Frame):
 					self.canvas.move(self.dnd_object.name_text_id, move_x, move_y)	# Move the text too
 
 					chair.pupil_tag = pupil.tag
+					self.canvas.itemconfig(chair.tag, fill=("#00dd00" if pupil.present else "#dd0000"))		# Make the chair green
 				elif chair == None and self.chair_at(self.dnd_start_x, self.dnd_start_y) != None:
 					# Here we put the code that removes a pupil from a chair
 
 					self.chair_at(self.dnd_start_x, self.dnd_start_y).pupil_tag = None
+					self.canvas.itemconfig(self.chair_at(self.dnd_start_x, self.dnd_start_y).tag, fill="#dd0000")	# Make the chair red again
 				else:
 					# If the object we're dragging isn't a pupil and there isn't a chair under us...
 
@@ -397,6 +399,7 @@ class Classroom(Frame):
 		# First, remove pupils from their current chairs and from the canvas
 		for chair in self.chairs():
 			self.canvas.delete(chair.pupil_tag)
+			self.canvas.itemconfig(chair.tag, fill="#dd0000")	# Make the chair red again
 			chair.pupil_tag = None
 
 		# Sorry, this bit is kinda messy
@@ -803,6 +806,7 @@ class SeatingPlan():
 		self.scanner.change_classroom(self.current_classroom())
 
 		if self.current_classroom():
+
 			# Clear the tree
 			for pupil_tag in self.pupilsTree.get_children():
 				self.pupilsTree.delete(pupil_tag)
@@ -811,6 +815,7 @@ class SeatingPlan():
 
 			classroom = self.current_classroom()
 
+			# Re-populate the tree
 			for tag, pupil in classroom.pupils.items():
 				self.pupilsTree.insert("", 0, iid=tag, tags=(tag,), text=pupil.name, values=(("Yes" if pupil.present else "No"), (str(pupil.scanner_id) if pupil.scanner_id else "")))
 				self.pupilsTree.tag_configure(tag, background=("#44ff44" if pupil.present else "#ff4444"))
@@ -819,8 +824,17 @@ class SeatingPlan():
 				# Select the pupil if they were previously selected
 				if tag in oldselecttags:
 					self.pupilsTree.selection_add(tag)
+
+			# Set chairs' colours according to their pupils' presence
+			for chair in classroom.chairs():
+				if chair.pupil_tag in classroom.pupils.keys():
+					pupil = classroom.pupils[chair.pupil_tag]
+					classroom.canvas.itemconfig(chair.tag, fill=("#00dd00" if pupil.present else "#dd0000"))
+
 		else:
 			# If there aren't any classrooms open...
+
+			# Clear the tree
 			for pupil_tag in self.pupilsTree.get_children():
 				self.pupilsTree.delete(pupil_tag)
 

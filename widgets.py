@@ -164,6 +164,7 @@ class SignInFPrintWidget(Frame):
 
 		sleep(3)
 
+
 		# Clear the widget AFTER 3 SECONDS
 		self.scanner_id = None
 		self.fprint_image.config(image='', text='No Fingerprint\nScanned')
